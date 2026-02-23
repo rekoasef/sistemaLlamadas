@@ -1,10 +1,10 @@
 package com.crucianelli.crucitrack
 
 import android.content.Context
+import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import androidx.work.ListenableWorker.Result
-import java.text.SimpleDateFormat
 import java.util.*
 
 class SyncCallWorker(appContext: Context, workerParams: WorkerParameters) :
@@ -18,30 +18,32 @@ class SyncCallWorker(appContext: Context, workerParams: WorkerParameters) :
         val estado = inputData.getString("estado") ?: "FINALIZADA"
         val timestamp = inputData.getLong("timestamp", System.currentTimeMillis())
 
-        // Formateamos la fecha exacto como la espera Supabase
-        val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US)
-        val fechaIso = sdf.format(Date(timestamp))
-
         return try {
-            // Mapeo exacto a las propiedades de CallRequest.kt
             val request = CallRequest(
                 phoneNumber = numero,
                 type = tipo,
                 duration = duracion,
                 deviceId = dispositivoId,
-                status = estado,
-                callDate = fechaIso
+                status = estado
+                // La fecha se genera sola en CallRequest según vimos en tu código
             )
 
-            RetrofitClient.apiService.uploadCall(
+            Log.d("SyncWorker", "Intentando subir: $numero - $estado")
+
+            val response = RetrofitClient.apiService.uploadCall(
                 url = "${SupabaseConfig.BASE_URL}/rest/v1/llamadas",
                 apiKey = SupabaseConfig.API_KEY,
                 bearer = "Bearer ${SupabaseConfig.API_KEY}",
                 call = request
             )
 
+            // Como uploadCall devuelve Unit o Response, verificamos si no lanzó excepción
+            Log.d("SyncWorker", "¡Subida exitosa a Supabase!")
             Result.success()
         } catch (e: Exception) {
+            Log.e("SyncWorker", "Error al subir: ${e.message}")
+            // Si el error es 404 o 400, reintentar no servirá de mucho, 
+            // pero si es falta de red, WorkManager lo hará después.
             Result.retry()
         }
     }

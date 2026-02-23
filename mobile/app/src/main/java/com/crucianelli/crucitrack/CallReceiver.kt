@@ -12,69 +12,81 @@ import java.util.concurrent.TimeUnit
 
 class CallReceiver : BroadcastReceiver() {
 
+    companion object {
+        private var lastState = TelephonyManager.EXTRA_STATE_IDLE
+        private var callStartTime: Long = 0
+        private var isIncoming = false
+        private var savedNumber: String? = null
+    }
+
     override fun onReceive(context: Context, intent: Intent) {
-        val state = intent.getStringExtra(TelephonyManager.EXTRA_STATE)
-        val number = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER) ?: return
+        val stateStr = intent.getStringExtra(TelephonyManager.EXTRA_STATE) ?: return
+        val number = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER) ?: savedNumber
 
-        if (state == TelephonyManager.EXTRA_STATE_IDLE) {
-            val timestamp = System.currentTimeMillis()
-            
-            // 1. GUARDAR EN EL HISTORIAL LOCAL (Room)
-            val callLog = CallLogEntity(
-                phoneNumber = number,
-                type = "ENTRANTE",
-                duration = 0, // Aquí podrías calcular la duración real
-                deviceId = "1",
-                timestamp = timestamp,
-                status = "PENDIENTE"
-            )
+        if (number != null) savedNumber = number
 
-            val db = AppDatabase.getDatabase(context)
-            CoroutineScope(Dispatchers.IO).launch {
-                db.callDao().insertCall(callLog)
+        when (stateStr) {
+            TelephonyManager.EXTRA_STATE_RINGING -> {
+                isIncoming = true
+                lastState = TelephonyManager.EXTRA_STATE_RINGING
             }
-
-            // 2. ENCOLAR SUBIDA A LA NUBE (WorkManager)
-            enviarLlamadaConGarantia(context, number, "ENTRANTE", 0, "1", "ATENDIDA", timestamp)
+            TelephonyManager.EXTRA_STATE_OFFHOOK -> {
+                // Empezó la conversación o se atendió
+                callStartTime = System.currentTimeMillis()
+                lastState = TelephonyManager.EXTRA_STATE_OFFHOOK
+            }
+            TelephonyManager.EXTRA_STATE_IDLE -> {
+                if (lastState == TelephonyManager.EXTRA_STATE_OFFHOOK) {
+                    // LA LLAMADA TERMINÓ (FUE ATENDIDA)
+                    val duration = ((System.currentTimeMillis() - callStartTime) / 1000).toInt()
+                    procesarLlamada(context, savedNumber ?: "Desconocido", duration, "ATENDIDA")
+                } else if (lastState == TelephonyManager.EXTRA_STATE_RINGING) {
+                    // LA LLAMADA SE CORTÓ SIN ATENDER
+                    procesarLlamada(context, savedNumber ?: "Desconocido", 0, "PERDIDA")
+                }
+                lastState = TelephonyManager.EXTRA_STATE_IDLE
+                savedNumber = null 
+            }
         }
     }
 
-    private fun enviarLlamadaConGarantia(
-        context: Context, 
-        numero: String, 
-        tipo: String, 
-        duracion: Int, 
-        idDisp: String, 
-        estado: String,
-        timestamp: Long
-    ) {
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build()
+    private fun procesarLlamada(context: Context, number: String, duration: Int, estado: String) {
+        val timestamp = System.currentTimeMillis()
+        val tipo = if (isIncoming) "ENTRANTE" else "SALIENTE"
 
+        // 1. Guardar local con datos reales
+        val db = AppDatabase.getDatabase(context)
+        CoroutineScope(Dispatchers.IO).launch {
+            db.callDao().insertCall(CallLogEntity(
+                phoneNumber = number,
+                type = tipo,
+                duration = duration,
+                deviceId = "1",
+                timestamp = timestamp,
+                status = estado
+            ))
+        }
+
+        // 2. Enviar a WorkManager
+        enviarACloud(context, number, tipo, duration, estado, timestamp)
+    }
+
+    private fun enviarACloud(context: Context, num: String, tipo: String, dur: Int, est: String, ts: Long) {
         val data = workDataOf(
-            "numero" to numero,
+            "numero" to num,
             "tipo" to tipo,
-            "duracion" to duracion,
-            "dispositivoId" to idDisp,
-            "estado" to estado,
-            "timestamp" to timestamp
+            "duracion" to dur,
+            "dispositivoId" to "1",
+            "estado" to est,
+            "timestamp" to ts
         )
 
         val syncRequest = OneTimeWorkRequestBuilder<SyncCallWorker>()
-            .setConstraints(constraints)
+            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
             .setInputData(data)
-            .setBackoffCriteria(
-                BackoffPolicy.EXPONENTIAL,
-                WorkRequest.MIN_BACKOFF_MILLIS,
-                TimeUnit.MILLISECONDS
-            )
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, WorkRequest.MIN_BACKOFF_MILLIS, TimeUnit.MILLISECONDS)
             .build()
 
-        WorkManager.getInstance(context).enqueueUniqueWork(
-            "sync_$timestamp",
-            ExistingWorkPolicy.REPLACE,
-            syncRequest
-        )
+        WorkManager.getInstance(context).enqueueUniqueWork("sync_$ts", ExistingWorkPolicy.REPLACE, syncRequest)
     }
 }
