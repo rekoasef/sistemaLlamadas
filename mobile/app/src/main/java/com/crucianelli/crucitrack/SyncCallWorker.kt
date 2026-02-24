@@ -5,57 +5,35 @@ import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import androidx.work.ForegroundInfo
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import androidx.core.app.NotificationCompat
 
 class SyncCallWorker(appContext: Context, workerParams: WorkerParameters) :
     CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
-        val db = AppDatabase.getDatabase(applicationContext)
-        val callDao = db.callDao()
+        // Obtenemos los datos enviados desde el CallReceiver [cite: 67]
+        val numero = inputData.getString("numero") ?: return Result.failure()
+        val tipo = inputData.getString("tipo")?.uppercase() ?: "ENTRANTE"
+        val duracion = inputData.getInt("duracion", 0)
+        // Si el ID viene vacío, ponemos uno por defecto para que la DB no lo rechace [cite: 54, 87]
+        val dispositivoId = inputData.getString("dispositivoId") ?: "PUESTO_DESCONOCIDO"
+        val estadoOriginal = inputData.getString("estado") ?: "PERDIDA"
 
-        // 1. Intentamos subir primero la llamada actual que viene por inputData
-        val numero = inputData.getString("numero")
-        if (numero != null) {
-            val success = uploadSingleCall(
-                numero, 
-                inputData.getString("tipo") ?: "ENTRANTE",
-                inputData.getInt("duracion", 0),
-                inputData.getString("dispositivoId") ?: "1",
-                inputData.getString("estado") ?: "FINALIZADA"
-            )
-            
-            if (success) {
-                Log.d("SyncWorker", "Llamada actual subida con éxito")
-            }
+        val estadoSincronizado = when (estadoOriginal.uppercase()) {
+            "ATENDIDA", "DESCOLGADO", "OFFHOOK" -> "ATENDIDA"
+            else -> "PERDIDA"
         }
 
-        // 2. LOGICA DE SEGURIDAD: Revisar si quedaron llamadas "huérfanas" en Room
-        // Esto es lo que evita que tengas que abrir la app para que se carguen los datos
-        return try {
-            val pendingCalls = callDao.getAllCalls() // Podrías filtrar aquí las no sincronizadas si agregas un flag
-            
-            // Si tienes muchas llamadas, aquí podrías iterar y subirlas.
-            // Por ahora, si la llamada actual falló, pedimos reintento
-            Result.success()
-        } catch (e: Exception) {
-            Log.e("SyncWorker", "Error crítico: ${e.message}")
-            Result.retry() // Android reintentará automáticamente cuando haya internet
-        }
-    }
-
-    private suspend fun uploadSingleCall(num: String, tipo: String, dur: Int, devId: String, est: String): Boolean {
         return try {
             val request = CallRequest(
-                phoneNumber = num,
+                phoneNumber = numero,
                 type = tipo,
-                duration = dur,
-                deviceId = devId,
-                status = est
+                duration = duracion,
+                deviceId = dispositivoId,
+                status = estadoSincronizado
             )
 
+            // Intentamos la subida a Supabase [cite: 69, 81]
             val response = RetrofitClient.apiService.uploadCall(
                 apiKey = SupabaseConfig.API_KEY,
                 bearer = "Bearer ${SupabaseConfig.API_KEY}",
@@ -63,23 +41,24 @@ class SyncCallWorker(appContext: Context, workerParams: WorkerParameters) :
             )
 
             if (response.isSuccessful) {
-                Log.d("SyncWorker", "¡Datos enviados a Supabase!")
-                true
+                Log.d("CRUCI_DEBUG", "Sincronización Exitosa")
+                Result.success()
             } else {
-                Log.e("SyncWorker", "Error Supabase: ${response.code()}")
-                false
+                // Si falla, pedimos reintento automático [cite: 71]
+                Log.e("CRUCI_DEBUG", "Error servidor: ${response.code()}")
+                Result.retry()
             }
         } catch (e: Exception) {
-            Log.e("SyncWorker", "Fallo de conexión: ${e.message}")
-            false
+            Log.e("CRUCI_DEBUG", "Error de red: ${e.message}")
+            Result.retry()
         }
     }
-    
-    // Necesario para Expedited Work en versiones antiguas de Android
+
     override suspend fun getForegroundInfo(): ForegroundInfo {
         val notification = NotificationCompat.Builder(applicationContext, "sync_channel")
             .setSmallIcon(android.R.drawable.stat_notify_sync)
-            .setContentTitle("Actualizando Cruci Track")
+            .setContentTitle("Cruci Track")
+            .setContentText("Subiendo registro a la nube...")
             .build()
         return ForegroundInfo(1, notification)
     }

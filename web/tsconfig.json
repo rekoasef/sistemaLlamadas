@@ -8,8 +8,7 @@
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",
-    "moduleResolution": "node", // <--- Cambiado de 'bundler' a 'node'
-    "baseUrl": ".",             // <--- Agregado para que sepa dónde está parado
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
@@ -20,9 +19,8 @@
       }
     ],
     "paths": {
-          "@/*": ["./src/*"],
-          "@supabase/auth-helpers-nextjs": ["./node_modules/@supabase/auth-helpers-nextjs"]
-        }
+      "@/*": ["./src/*"]
+    }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]

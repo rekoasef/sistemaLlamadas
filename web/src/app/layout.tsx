@@ -1,11 +1,10 @@
 import './globals.css'
-import { Inter } from 'next/font/google'
+import type { Metadata } from 'next'
+import Sidebar from '@/components/Sidebar'
 
-const inter = Inter({ subsets: ['latin'] })
-
-export const metadata = {
-  title: 'Cruci Track - CRM de Posventa',
-  description: 'Sistema de monitoreo de flota Crucianelli',
+export const metadata: Metadata = {
+  title: 'CRUCI TRACK | Dashboard',
+  description: 'Sistema de monitoreo de red Crucianelli',
 }
 
 export default function RootLayout({
@@ -15,8 +14,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
-      <body className={`${inter.className} bg-[#0a0a0a] text-white`} suppressHydrationWarning={true}>
-        {children}
+      <body className="flex bg-black min-h-screen">
+        <Sidebar />
+        <main className="flex-1 ml-64 p-10 bg-black">
+          {children}
+        </main>
       </body>
     </html>
   )

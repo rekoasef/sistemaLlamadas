@@ -14,24 +14,24 @@
 12    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 12-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:6:5-79
 12-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:6:22-76
-13    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-13-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:7:5-78
-13-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:7:22-75
-14    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-14-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:9:5-77
-14-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:9:22-74
-15    <uses-permission android:name="android.permission.WAKE_LOCK" />
-15-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:10:5-68
-15-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:10:22-65
-16    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
-16-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:12:5-75
-16-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:12:22-72
-17    <uses-permission android:name="android.permission.READ_CALL_LOG" />
-17-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:13:5-72
-17-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:13:22-69
-18    <uses-permission android:name="android.permission.PROCESS_OUTGOING_CALLS" />
-18-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:14:5-81
-18-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:14:22-78
+13    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+13-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:8:5-75
+13-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:8:22-72
+14    <uses-permission android:name="android.permission.READ_CALL_LOG" />
+14-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:9:5-72
+14-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:9:22-69
+15    <uses-permission android:name="android.permission.PROCESS_OUTGOING_CALLS" />
+15-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:10:5-81
+15-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:10:22-78
+16    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+16-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:12:5-77
+16-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:12:22-74
+17    <uses-permission android:name="android.permission.WAKE_LOCK" />
+17-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:13:5-68
+17-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:13:22-65
+18    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+18-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:14:5-77
+18-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:14:22-74
 19    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 19-->[androidx.work:work-runtime:2.8.1] /home/renzoasef/.gradle/caches/transforms-3/762eaf076cb263bb61e00e4e094ad61b/transformed/work-runtime-2.8.1/AndroidManifest.xml:25:5-81
 19-->[androidx.work:work-runtime:2.8.1] /home/renzoasef/.gradle/caches/transforms-3/762eaf076cb263bb61e00e4e094ad61b/transformed/work-runtime-2.8.1/AndroidManifest.xml:25:22-78
@@ -48,70 +48,70 @@
 25-->[androidx.core:core:1.12.0] /home/renzoasef/.gradle/caches/transforms-3/4c8da3a143fa75cb35c2b797e5843a04/transformed/core-1.12.0/AndroidManifest.xml:26:22-94
 26
 27    <application
-27-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:16:5-51:15
+27-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:14:78-49:19
 28        android:allowBackup="true"
-28-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:17:9-35
+28-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:15:9-35
 29        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
 29-->[androidx.core:core:1.12.0] /home/renzoasef/.gradle/caches/transforms-3/4c8da3a143fa75cb35c2b797e5843a04/transformed/core-1.12.0/AndroidManifest.xml:28:18-86
 30        android:debuggable="true"
 31        android:extractNativeLibs="false"
 32        android:label="Cruci Track"
-32-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:18:9-36
+32-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:16:9-36
 33        android:supportsRtl="true"
-33-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:19:9-35
-34        android:theme="@style/Theme.AppCompat.Light.NoActionBar" >
-34-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:20:9-65
-35        <activity
-35-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:22:9-29:20
-36            android:name="com.crucianelli.crucitrack.MainActivity"
-36-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:23:13-41
-37            android:exported="true" >
-37-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:24:13-36
-38            <intent-filter>
-38-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:25:13-28:29
-39                <action android:name="android.intent.action.MAIN" />
-39-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:26:17-69
-39-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:26:25-66
-40
-41                <category android:name="android.intent.category.LAUNCHER" />
-41-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:27:17-77
-41-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:27:27-74
-42            </intent-filter>
-43        </activity>
-44
-45        <receiver
-45-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:31:9-39:20
-46            android:name="com.crucianelli.crucitrack.CallReceiver"
-46-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:32:13-41
-47            android:exported="true"
-47-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:33:13-36
-48            android:permission="android.permission.BIND_TELECOM_CONNECTION_SERVICE" >
-48-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:34:13-84
+33-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:17:9-35
+34        android:theme="@style/Theme.AppCompat.Light.NoActionBar"
+34-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:18:9-65
+35        android:usesCleartextTraffic="true" >
+35-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:19:9-44
+36        <activity
+36-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:21:9-28:20
+37            android:name="com.crucianelli.crucitrack.MainActivity"
+37-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:22:13-41
+38            android:exported="true" >
+38-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:23:13-36
+39            <intent-filter>
+39-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:24:13-27:29
+40                <action android:name="android.intent.action.MAIN" />
+40-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:25:17-69
+40-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:25:25-66
+41
+42                <category android:name="android.intent.category.LAUNCHER" />
+42-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:26:17-77
+42-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:26:27-74
+43            </intent-filter>
+44        </activity>
+45
+46        <receiver
+46-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:30:9-37:20
+47            android:name="com.crucianelli.crucitrack.CallReceiver"
+47-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:31:13-41
+48            android:exported="true" >
+48-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:32:13-36
 49            <intent-filter android:priority="999" >
-49-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:35:13-38:29
-49-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:35:28-50
+49-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:33:13-36:29
+49-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:33:28-50
 50                <action android:name="android.intent.action.PHONE_STATE" />
-50-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:36:17-76
-50-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:36:25-73
+50-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:34:17-76
+50-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:34:25-73
 51                <action android:name="android.intent.action.NEW_OUTGOING_CALL" />
-51-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:37:17-82
-51-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:37:25-79
+51-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:35:17-82
+51-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:35:25-79
 52            </intent-filter>
 53        </receiver>
 54
 55        <provider
 56            android:name="androidx.startup.InitializationProvider"
-56-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:42:13-67
+56-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:40:13-67
 57            android:authorities="com.crucianelli.crucitrack.androidx-startup"
-57-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:43:13-68
+57-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:41:13-68
 58            android:exported="false" >
-58-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:44:13-37
+58-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:42:13-37
 59            <meta-data
-59-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:46:13-48:52
+59-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:44:13-46:52
 60                android:name="androidx.work.WorkManagerInitializer"
-60-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:47:17-68
+60-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:45:17-68
 61                android:value="androidx.startup" />
-61-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:48:17-49
+61-->/home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:46:17-49
 62            <meta-data
 62-->[androidx.emoji2:emoji2:1.2.0] /home/renzoasef/.gradle/caches/transforms-3/ed9fe1f809bd0d671abadaa8a84e276f/transformed/jetified-emoji2-1.2.0/AndroidManifest.xml:29:13-31:52
 63                android:name="androidx.emoji2.text.EmojiCompatInitializer"
