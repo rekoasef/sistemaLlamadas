@@ -4,8 +4,6 @@ import android.content.Context
 import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import androidx.work.ListenableWorker.Result
-import java.util.*
 
 class SyncCallWorker(appContext: Context, workerParams: WorkerParameters) :
     CoroutineWorker(appContext, workerParams) {
@@ -16,7 +14,6 @@ class SyncCallWorker(appContext: Context, workerParams: WorkerParameters) :
         val duracion = inputData.getInt("duracion", 0)
         val dispositivoId = inputData.getString("dispositivoId") ?: "1"
         val estado = inputData.getString("estado") ?: "FINALIZADA"
-        val timestamp = inputData.getLong("timestamp", System.currentTimeMillis())
 
         return try {
             val request = CallRequest(
@@ -25,25 +22,25 @@ class SyncCallWorker(appContext: Context, workerParams: WorkerParameters) :
                 duration = duracion,
                 deviceId = dispositivoId,
                 status = estado
-                // La fecha se genera sola en CallRequest según vimos en tu código
             )
 
-            Log.d("SyncWorker", "Intentando subir: $numero - $estado")
+            Log.d("SyncWorker", "Enviando a Supabase: $numero")
 
             val response = RetrofitClient.apiService.uploadCall(
-                url = "${SupabaseConfig.BASE_URL}/rest/v1/llamadas",
                 apiKey = SupabaseConfig.API_KEY,
                 bearer = "Bearer ${SupabaseConfig.API_KEY}",
                 call = request
             )
 
-            // Como uploadCall devuelve Unit o Response, verificamos si no lanzó excepción
-            Log.d("SyncWorker", "¡Subida exitosa a Supabase!")
-            Result.success()
+            if (response.isSuccessful) {
+                Log.d("SyncWorker", "¡Éxito total!")
+                Result.success()
+            } else {
+                Log.e("SyncWorker", "Error Servidor: ${response.code()} - ${response.errorBody()?.string()}")
+                Result.retry()
+            }
         } catch (e: Exception) {
-            Log.e("SyncWorker", "Error al subir: ${e.message}")
-            // Si el error es 404 o 400, reintentar no servirá de mucho, 
-            // pero si es falta de red, WorkManager lo hará después.
+            Log.e("SyncWorker", "Fallo de red/sistema: ${e.message}")
             Result.retry()
         }
     }

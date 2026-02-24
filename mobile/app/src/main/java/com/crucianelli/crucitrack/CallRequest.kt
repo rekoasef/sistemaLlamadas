@@ -8,7 +8,7 @@ data class CallRequest(
     @SerializedName("numero_telefono") val phoneNumber: String,
     @SerializedName("tipo_llamada") val type: String,
     @SerializedName("duracion_segundos") val duration: Int,
-    @SerializedName("dispositivo_id") val deviceId: String?,
+    @SerializedName("dispositivo_id") val deviceId: String,
     @SerializedName("estado") val status: String,
-    @SerializedName("fecha_llamada") val callDate: String = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US).format(Date())
+    @SerializedName("fecha_llamada") val date: String = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", Locale.getDefault()).format(Date())
 )
