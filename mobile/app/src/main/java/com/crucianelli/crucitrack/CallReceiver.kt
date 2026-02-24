@@ -11,20 +11,22 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 class CallReceiver : BroadcastReceiver() {
     
     override fun onReceive(context: Context, intent: Intent) {
         val stateStr = intent.getStringExtra(TelephonyManager.EXTRA_STATE)
         
-        // Solo procesamos cuando el teléfono vuelve a estar libre (IDLE)
         if (stateStr == TelephonyManager.EXTRA_STATE_IDLE) {
             val pendingResult = goAsync()
             CoroutineScope(Dispatchers.IO).launch {
                 try {
-                    // Esperamos 3 segundos para asegurar que el sistema escribió el Log completo
-                    delay(3000) 
+                    // Espera necesaria para que el sistema escriba el CallLog
+                    delay(3500) 
                     processCallLog(context)
+                } catch (e: Exception) {
+                    Log.e("CallReceiver", "Error en proceso: ${e.message}")
                 } finally {
                     pendingResult.finish()
                 }
@@ -32,7 +34,7 @@ class CallReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun processCallLog(context: Context) {
+    private suspend fun processCallLog(context: Context) {
         val cursor = context.contentResolver.query(
             CallLog.Calls.CONTENT_URI,
             arrayOf(CallLog.Calls._ID, CallLog.Calls.NUMBER, CallLog.Calls.DURATION, CallLog.Calls.TYPE),
@@ -48,47 +50,48 @@ class CallReceiver : BroadcastReceiver() {
                 val duration = it.getInt(it.getColumnIndex(CallLog.Calls.DURATION))
                 val typeCode = it.getInt(it.getColumnIndex(CallLog.Calls.TYPE))
                 
-                // --- FILTRO DE DUPLICADOS POR ID ---
                 val prefs = context.getSharedPreferences("CallTrackerPrefs", Context.MODE_PRIVATE)
                 val lastId = prefs.getString("last_call_id", "")
                 
-                if (callId == lastId) {
-                    Log.d("CallReceiver", "Llamada $callId ya procesada. Ignorando duplicado.")
-                    return
-                }
+                if (callId == lastId) return
                 
-                // Guardar el nuevo ID inmediatamente
                 prefs.edit().putString("last_call_id", callId).apply()
-                // ------------------------------------
-
-                val type = if (typeCode == CallLog.Calls.OUTGOING_TYPE) "SALIENTE" else "ENTRANTE"
                 
-                // Mantenemos tu criterio de 15 segundos
+                val type = if (typeCode == CallLog.Calls.OUTGOING_TYPE) "SALIENTE" else "ENTRANTE"
                 val status = if (duration >= 15) "ATENDIDA" else "RECHAZADA"
 
-                Log.d("CallReceiver", "Procesando nueva llamada ID: $callId | Duración: $duration s")
-                saveAndSync(context, number, type, duration, status)
+                // 1. Inserción Sincrónica en Room para asegurar persistencia antes del Worker
+                saveToLocalDatabase(context, number, type, duration, status)
+                
+                // 2. Encolar Worker con prioridad máxima
+                enqueueSyncWorker(context, number, type, duration, status)
             }
         }
     }
 
-    private fun saveAndSync(context: Context, num: String, type: String, dur: Int, stat: String) {
+    private suspend fun saveToLocalDatabase(context: Context, num: String, type: String, dur: Int, stat: String) {
         val prefs = context.getSharedPreferences("Config", Context.MODE_PRIVATE)
         val deviceId = prefs.getString("device_id", "1") ?: "1"
-
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val db = AppDatabase.getDatabase(context)
-                db.callDao().insertCall(CallLogEntity(
-                    phoneNumber = num,
-                    type = type,
-                    duration = dur,
-                    status = stat,
-                    timestamp = System.currentTimeMillis(),
-                    deviceId = deviceId
-                ))
-            } catch (e: Exception) { Log.e("DB_ERROR", "${e.message}") }
+        
+        try {
+            val db = AppDatabase.getDatabase(context)
+            db.callDao().insertCall(CallLogEntity(
+                phoneNumber = num,
+                type = type,
+                duration = dur,
+                status = stat,
+                timestamp = System.currentTimeMillis(),
+                deviceId = deviceId
+            ))
+            Log.d("CallReceiver", "Guardado local exitoso")
+        } catch (e: Exception) {
+            Log.e("DB_ERROR", "Error guardando llamada: ${e.message}")
         }
+    }
+
+    private fun enqueueSyncWorker(context: Context, num: String, type: String, dur: Int, stat: String) {
+        val prefs = context.getSharedPreferences("Config", Context.MODE_PRIVATE)
+        val deviceId = prefs.getString("device_id", "1") ?: "1"
 
         val data = Data.Builder()
             .putString("numero", num)
@@ -98,11 +101,18 @@ class CallReceiver : BroadcastReceiver() {
             .putString("dispositivoId", deviceId)
             .build()
 
-        WorkManager.getInstance(context).enqueue(
-            OneTimeWorkRequestBuilder<SyncCallWorker>()
-                .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
-                .setInputData(data)
-                .build()
+        val syncRequest = OneTimeWorkRequestBuilder<SyncCallWorker>()
+            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST) // Clave para Background real
+            .setConstraints(Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build())
+            .setInputData(data)
+            .build()
+
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            "sync_call_${System.currentTimeMillis()}",
+            ExistingWorkPolicy.REPLACE,
+            syncRequest
         )
     }
 }

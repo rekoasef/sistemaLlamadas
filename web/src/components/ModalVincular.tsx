@@ -25,12 +25,14 @@ export default function ModalVincular({ numero, onClose, onSuccess }: Props) {
   const vincular = async (id: string) => {
     if (loading) return
     setLoading(true)
+
+    const numeroLimpio = numero.replace(/\D/g, '')
     
     try {
-      const { error } = await supabase
-        .from('concesionarios')
-        .update({ telefono: numero })
-        .eq('id', id)
+        const { error } = await supabase
+          .from('concesionarios')
+          .update({ telefono: numeroLimpio })
+          .eq('id', id)
       
       if (error) {
         console.error("Error de Supabase:", error.message)

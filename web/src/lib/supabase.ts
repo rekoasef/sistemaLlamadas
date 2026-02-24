@@ -1,14 +1,15 @@
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@supabase/supabase-js'
 
-export const supabase = createClientComponentClient({
-  options: {
-    realtime: {
-      params: {
-        eventsPerSecond: 20, // Aumentamos la frecuencia
-      },
-    },
-    db: {
-      schema: 'public',
-    },
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+// Usamos el cliente estándar para evitar la caché de cookies de Next.js
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
   },
-});
+  global: {
+    headers: { 'x-my-custom-header': 'cruci-track' },
+  },
+})
