@@ -1,36 +1,77 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+🚜 CRUCI TRACK - Sistema de Monitoreo de Red
+CRUCI TRACK es una plataforma industrial de control y gestión para la red de concesionarios de Crucianelli. Permite el seguimiento en tiempo real de la actividad telefónica, la gestión centralizada de terminales y la visualización de indicadores de rendimiento (KPIs).
 
-## Getting Started
+🛠️ Stack Tecnológico
+Frontend: Next.js 13.5.6 (App Router).
 
-First, run the development server:
+Estilos: Tailwind CSS (Diseño con estética industrial Dark).
 
-```bash
+Backend & Base de Datos: Supabase (PostgreSQL).
+
+Realtime: PostgreSQL CDC para actualizaciones instantáneas sin recargar la página.
+
+Iconografía: Lucide React.
+
+🚀 Funcionalidades Implementadas
+1. Dashboard en Tiempo Real
+Visualización de las últimas 100 llamadas (Entrantes/Salientes).
+
+KPIs dinámicos: Volumen de Red, Tasa de Eficiencia (Atendidas) e Incidencias (Perdidas).
+
+Filtros avanzados por fecha y por número de puesto (Dispositivo ID).
+
+Identificación inmediata de concesionarios vinculados.
+
+2. Agenda de Red (Multi-línea)
+Gestión Centralizada: Sección dedicada para administrar la base de datos de concesionarios.
+
+Soporte Multivendedor: Capacidad de asociar múltiples números de teléfono a un mismo concesionario.
+
+Vinculación Retroactiva: Al asignar un número a un concesionario, el sistema actualiza automáticamente todo el historial de llamadas de ese número.
+
+3. Automatización Inteligente (SQL Triggers)
+tr_vincular_por_agenda_completa: Función a nivel de base de datos que identifica al concesionario en el momento exacto en que ingresa la llamada.
+
+tr_limpiar_historial_numero: Trigger que asegura que, al agregar un nuevo vendedor a la agenda, todas sus llamadas pasadas se identifiquen correctamente en el dashboard.
+
+📊 Modelo de Datos
+El sistema utiliza tres tablas principales interconectadas:
+
+llamadas: Registro de eventos (sentido, número, estado, dispositivo, fecha).
+
+concesionarios: Entidades de la red (nombre, localidad).
+
+concesionario_telefonos: Diccionario de números asociados a cada concesionario.
+
+⚙️ Configuración del Entorno
+Clonar el repositorio:
+
+Bash
+git clone https://github.com/rekoasef/sistemaLlamadas.git
+Instalar dependencias:
+
+Bash
+npm install
+Variables de Entorno (.env.local):
+
+Fragmento de código
+NEXT_PUBLIC_SUPABASE_URL=tu_proyecto_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_anon_key
+Levantar el proyecto:
+
+Bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+📝 Scripts de Base de Datos (SQL Editor)
+Para el correcto funcionamiento de la automatización, es necesario ejecutar los scripts de la carpeta /sql (o los triggers de vinculación automática) en el panel de Supabase para habilitar la lógica SECURITY DEFINER que permite la actualización cruzada de tablas.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+🗺️ Roadmap
+[x] Gestión Multi-línea.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+[x] Triggers de vinculación retroactiva.
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+[ ] Inteligencia BI: Módulo de analítica avanzada y reportes semanales.
 
-## Learn More
+[ ] Exportación: Reportes en PDF de rendimiento por terminal.
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+Desarrollado para Crucianelli S.A.
+Optimizando la comunicación de la red líder en maquinaria agrícola.
