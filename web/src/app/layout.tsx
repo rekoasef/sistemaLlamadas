@@ -14,9 +14,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
-      <body className="flex bg-black min-h-screen">
+      <body className="flex bg-black min-h-screen" suppressHydrationWarning>
         <Sidebar />
-        <main className="flex-1 ml-64 p-10 bg-black">
+        <main className="flex-1 ml-10 p-10 bg-black">
           {children}
         </main>
       </body>

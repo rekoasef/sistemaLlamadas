@@ -9,18 +9,42 @@ import {
 } from 'lucide-react'
 import ModalVincular from '@/components/ModalVincular'
 
-// Reloj Digital
+// ==========================================
+// RELOJ DIGITAL CORREGIDO (24 HORAS)
+// ==========================================
 function LiveClock() {
   const [time, setTime] = useState(new Date())
+  const [mounted, setMounted] = useState(false) // Nueva bandera
+
   useEffect(() => {
+    setMounted(true) // Indicamos que ya estamos en el cliente
     const timer = setInterval(() => setTime(new Date()), 1000)
     return () => clearInterval(timer)
   }, [])
+
+  // Si no está montado, devolvemos un placeholder con la misma estructura 
+  // pero sin el texto de la hora para evitar el error de hidratación.
+  if (!mounted) {
+    return (
+      <div className="flex items-center gap-3 bg-black/40 px-6 py-3 rounded-2xl border border-neutral-800 backdrop-blur-xl">
+        <Clock size={16} className="text-red-600 animate-pulse" />
+        <span className="text-white font-black italic text-sm tracking-tighter opacity-0">
+          00:00:00
+        </span>
+      </div>
+    )
+  }
+
   return (
     <div className="flex items-center gap-3 bg-black/40 px-6 py-3 rounded-2xl border border-neutral-800 backdrop-blur-xl group hover:border-red-600 transition-all">
       <Clock size={16} className="text-red-600 animate-pulse" />
       <span className="text-white font-black italic text-sm tracking-tighter">
-        {time.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+        {time.toLocaleTimeString('es-AR', { 
+          hour: '2-digit', 
+          minute: '2-digit', 
+          second: '2-digit', 
+          hour12: false 
+        })}
       </span>
     </div>
   )
@@ -51,13 +75,11 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchLlamadas()
-    // REALTIME REFORZADO
     const channel = supabase.channel('dashboard-realtime-final')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'llamadas' }, async (payload) => {
         setEventFlash(true)
         setTimeout(() => setEventFlash(false), 2000)
 
-        // En cualquier evento (INSERT/UPDATE), traemos la fila con su relación
         const id = payload.new ? (payload.new as any).id : (payload.old as any).id
         const { data: fullRow } = await supabase
           .from('llamadas')
@@ -110,21 +132,13 @@ export default function DashboardPage() {
   const paginadas = filtradas.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
   const totalPages = Math.ceil(filtradas.length / itemsPerPage)
 
-  // ==========================================
-  // FUNCIÓN DE DURACIÓN CORREGIDA
-  // ==========================================
   const formatDuracion = (ll: any) => {
-    // Intentamos obtener el valor de distintas posibles columnas
     const segundos = ll.duracion || ll.duration || ll.duracion_segundos || 0;
-    
-    // Si es un string (ej: "00:05:20"), lo devolvemos tal cual o lo limpiamos
     if (typeof segundos === 'string' && segundos.includes(':')) {
-      return segundos.split('.')[0]; // Quita milisegundos si existen
+      return segundos.split('.')[0];
     }
-
     const totalSegundos = Number(segundos);
     if (isNaN(totalSegundos) || totalSegundos === 0) return '00:00';
-    
     const mins = Math.floor(totalSegundos / 60);
     const secs = totalSegundos % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
@@ -163,9 +177,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-neutral-900/50 border border-neutral-800 p-10 rounded-[3.5rem] relative group shadow-2xl transition-all hover:border-red-600/50">
+        <div className="bg-neutral-900/50 border border-neutral-800 p-10 rounded-[3.5rem] relative group overflow-hidden shadow-2xl transition-all hover:border-red-600/50 backdrop-blur-md">
           <p className="text-neutral-500 text-[10px] font-black uppercase tracking-widest italic mb-6">Volumen de Red</p>
           <div className="flex items-baseline gap-4 mb-10"><h2 className="text-8xl font-black italic text-white tracking-tighter">{stats.total}</h2><span className="text-neutral-600 text-sm font-black uppercase italic tracking-widest">Total</span></div>
           <div className="grid grid-cols-2 gap-8 border-t border-neutral-800 pt-8">
@@ -177,7 +190,6 @@ export default function DashboardPage() {
         <StatCard label="Incidencias Críticas" value={stats.perdidasComerciales} color="text-red-600" icon={<AlertCircle size={40} className="opacity-20 group-hover:animate-bounce" />} sub="Perdidas (07-19hs)" glow />
       </div>
 
-      {/* TABLA */}
       <div className="bg-neutral-900/40 border border-neutral-800 rounded-[3.5rem] overflow-hidden shadow-2xl backdrop-blur-md">
         <div className="px-12 py-10 border-b border-neutral-800 bg-neutral-900/50 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -225,7 +237,6 @@ export default function DashboardPage() {
                       </div>
                     )}
                   </td>
-                  {/* COLUMNA DURACIÓN CORREGIDA */}
                   <td className="px-12 py-8 text-center">
                     <div className="flex flex-col items-center">
                       <div className="flex items-center gap-2 text-white font-mono text-2xl font-bold tracking-tighter group-hover:text-red-600 transition-colors leading-none">
@@ -240,7 +251,12 @@ export default function DashboardPage() {
                   </td>
                   <td className="px-12 py-8 text-right">
                     <div className="space-y-1">
-                      <span className="text-white font-black italic text-2xl leading-none block tracking-tighter group-hover:text-red-500 transition-colors">{new Date(ll.fecha_llamada).toLocaleTimeString('es-AR')}</span>
+                      {/* ========================================== */}
+                      {/* HORA DE LLAMADA CORREGIDA A 24 HORAS */}
+                      {/* ========================================== */}
+                      <span suppressHydrationWarning className="text-white font-black italic text-2xl ...">
+                        {new Date(ll.fecha_llamada).toLocaleTimeString('es-AR', { hour12: false })}
+                      </span>
                       <div className="flex items-center justify-end gap-2 text-[10px] font-black text-neutral-600 uppercase italic"><Monitor size={12} className="text-red-600" /> ST-{ll.dispositivo_id}</div>
                     </div>
                   </td>
