@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { X, Save, Building2, Search, Check } from 'lucide-react'
+import { X, Save, Building2, Search, Check, AlertTriangle } from 'lucide-react'
 
 interface Props {
   numero: string
@@ -15,8 +15,10 @@ export default function ModalVincular({ numero, onClose, onSuccess }: Props) {
   const [filter, setFilter] = useState('')
   const [loading, setLoading] = useState(false)
   const [nombreNuevo, setNombreNuevo] = useState('')
+  
+  // ESTADO PARA DOBLE CONFIRMACIÓN
+  const [confirmingAction, setConfirmingAction] = useState<{type: 'select' | 'create', id?: string} | null>(null)
 
-  // Cargar lista de concesionarios para el buscador
   useEffect(() => {
     const loadConcesionarios = async () => {
       const { data } = await supabase
@@ -28,18 +30,27 @@ export default function ModalVincular({ numero, onClose, onSuccess }: Props) {
     loadConcesionarios()
   }, [])
 
-  const filtered = concesionarios.filter(c => 
-    c.nombre.toLowerCase().includes(filter.toLowerCase())
-  )
+  // FUNCIÓN PARA VERIFICAR SI EL NÚMERO YA EXISTE
+  const verificarDuplicado = async () => {
+    const { data, error } = await supabase
+      .from('concesionario_telefonos')
+      .select('concesionarios(nombre)')
+      .eq('numero_telefono', numero)
+      .maybeSingle()
+    
+    if (data) {
+      alert(`ERROR CRÍTICO: Este número ya está asignado a "${(data as any).concesionarios.nombre}". No se puede duplicar en la agenda.`)
+      return true
+    }
+    return false
+  }
 
-  /**
-   * OPCIÓN 1: VINCULAR A CONCESIONARIO EXISTENTE
-   * Agregamos el número a la agenda de ese concesionario.
-   * El Trigger SQL 'tr_limpiar_historial_numero' actualizará todas las llamadas automáticamente.
-   */
   const vincularExistente = async (concesionarioId: string) => {
     setLoading(true)
     try {
+      const esDuplicado = await verificarDuplicado()
+      if (esDuplicado) return
+
       const { error } = await supabase
         .from('concesionario_telefonos')
         .insert([{ 
@@ -48,70 +59,95 @@ export default function ModalVincular({ numero, onClose, onSuccess }: Props) {
           nombre_referencia: 'Vendedor / Sucursal' 
         }])
 
-      if (error) {
-        // Si el número ya estaba en otro concesionario, avisamos
-        if (error.code === '23505') {
-          alert("ESTE NÚMERO YA PERTENECE A OTRO CONCESIONARIO EN LA AGENDA.")
-          return
-        }
-        throw error
-      }
-
-      onSuccess() // Notifica al Dashboard para recargar
-      onClose()   // Cierra el modal
+      if (error) throw error
+      onSuccess()
+      onClose()
     } catch (err) {
-      console.error("Error al vincular:", err)
+      console.error("Error:", err)
       alert("Error al procesar la vinculación.")
     } finally {
       setLoading(false)
+      setConfirmingAction(null)
     }
   }
 
-  /**
-   * OPCIÓN 2: CREAR NUEVO Y VINCULAR
-   * Creamos el concesionario y luego le asignamos su primer número.
-   * El Trigger se encargará del resto.
-   */
-  const handleCrearYVincular = async () => {
-    if (!nombreNuevo) return
-    setLoading(true)
+const handleCrearYVincular = async () => {
+    if (!nombreNuevo || !numero) return; // Verificamos que ambos existan
+    setLoading(true);
+    
     try {
-      // 1. Creamos el concesionario base
+      // 1. Crear el concesionario con su campo obligatorio
       const { data: nuevoC, error: errC } = await supabase
         .from('concesionarios')
-        .insert([{ nombre: nombreNuevo.toUpperCase() }])
+        .insert([
+          { 
+            nombre: nombreNuevo.toUpperCase(),
+            telefono_principal: numero, // Campo requerido por la DB
+            localidad: 'PENDIENTE' 
+          }
+        ])
         .select()
-        .single()
+        .single();
 
-      if (errC) throw errC
+      if (errC) throw errC;
 
-      // 2. Insertamos el número en la tabla de teléfonos vinculada
-      // Esto dispara el trigger 'tr_limpiar_historial_numero' en la DB
+      // 2. Vincular en la tabla de teléfonos (Agenda)
       const { error: errT } = await supabase
         .from('concesionario_telefonos')
-        .insert([{ 
-          concesionario_id: nuevoC.id, 
+        .upsert({ 
           numero_telefono: numero,
+          concesionario_id: nuevoC.id, 
           nombre_referencia: 'Principal' 
-        }])
+        }, { onConflict: 'numero_telefono' });
 
-      if (errT) throw errT
+      if (errT) throw errT;
 
-      onSuccess() 
-      onClose()
-    } catch (err) {
-      console.error("Error en creación:", err)
-      alert("Error: Es posible que este número ya exista en la agenda.")
+      onSuccess(); 
+      onClose();
+    } catch (err: any) {
+      console.error("Error detallado:", err);
+      // Manejo específico para el usuario
+      if (err.code === '23502') {
+        alert(`Error: El campo ${err.column || 'teléfono'} es obligatorio en la base de datos.`);
+      } else {
+        alert("Error en la creación: " + (err.message || "Consulte el log"));
+      }
     } finally {
-      setLoading(false)
+      setLoading(false);
+      setConfirmingAction(null);
     }
-  }
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
-      <div className="w-full max-w-lg bg-neutral-900 border border-neutral-800 rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in duration-300">
+      <div className="w-full max-w-lg bg-neutral-900 border border-neutral-800 rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in duration-300 relative">
         
-        {/* Header Estilo Industrial */}
+        {/* MODAL DE CONFIRMACIÓN SUPERPUESTO */}
+        {confirmingAction && (
+          <div className="absolute inset-0 z-[110] bg-red-600 flex flex-col items-center justify-center p-10 text-center animate-in fade-in duration-200">
+            <AlertTriangle size={60} className="text-white mb-4 animate-bounce" />
+            <h3 className="text-white font-black italic text-3xl uppercase tracking-tighter mb-2">¿Estás Seguro?</h3>
+            <p className="text-white/80 text-xs font-bold uppercase tracking-widest mb-8">
+              Vas a vincular el número {numero} a {confirmingAction.type === 'create' ? nombreNuevo : 'este concesionario'}.
+            </p>
+            <div className="flex gap-4 w-full">
+              <button 
+                onClick={() => setConfirmingAction(null)}
+                className="flex-1 py-4 bg-black/20 hover:bg-black/40 text-white rounded-2xl font-black uppercase text-[10px] transition-all"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={() => confirmingAction.type === 'create' ? handleCrearYVincular() : vincularExistente(confirmingAction.id!)}
+                className="flex-1 py-4 bg-white text-red-600 rounded-2xl font-black uppercase text-[10px] shadow-xl transition-all active:scale-95"
+              >
+                Sí, Confirmar
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Header */}
         <div className="px-10 py-8 border-b border-neutral-800 flex justify-between items-center bg-neutral-800/20">
           <div>
             <h2 className="text-white font-black italic uppercase tracking-tighter text-2xl flex items-center gap-3">
@@ -126,20 +162,10 @@ export default function ModalVincular({ numero, onClose, onSuccess }: Props) {
           </button>
         </div>
 
-        {/* Tabs de Modo */}
+        {/* Tabs */}
         <div className="flex border-b border-neutral-800">
-          <button 
-            onClick={() => setMode('select')}
-            className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest transition-all ${mode === 'select' ? 'bg-red-600 text-white shadow-[inset_0_-2px_0_white]' : 'text-neutral-500 hover:text-neutral-300'}`}
-          >
-            Elegir Existente
-          </button>
-          <button 
-            onClick={() => setMode('create')}
-            className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest transition-all ${mode === 'create' ? 'bg-red-600 text-white shadow-[inset_0_-2px_0_white]' : 'text-neutral-500 hover:text-neutral-300'}`}
-          >
-            Nuevo Registro
-          </button>
+          <button onClick={() => setMode('select')} className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest transition-all ${mode === 'select' ? 'bg-red-600 text-white' : 'text-neutral-500 hover:text-neutral-300'}`}>Elegir Existente</button>
+          <button onClick={() => setMode('create')} className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest transition-all ${mode === 'create' ? 'bg-red-600 text-white' : 'text-neutral-500 hover:text-neutral-300'}`}>Nuevo Registro</button>
         </div>
 
         <div className="p-10">
@@ -148,53 +174,41 @@ export default function ModalVincular({ numero, onClose, onSuccess }: Props) {
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600" size={18} />
                 <input 
-                  type="text"
-                  placeholder="BUSCAR EN LA AGENDA..."
-                  value={filter}
+                  type="text" placeholder="BUSCAR EN LA AGENDA..." value={filter}
                   onChange={(e) => setFilter(e.target.value)}
-                  className="w-full bg-black border border-neutral-800 rounded-2xl py-4 pl-12 pr-4 text-white font-bold italic focus:border-red-600 outline-none transition-all uppercase placeholder:text-neutral-700"
+                  className="w-full bg-black border border-neutral-800 rounded-2xl py-4 pl-12 pr-4 text-white font-bold italic focus:border-red-600 outline-none uppercase"
                 />
               </div>
-              
-              <div className="max-h-[300px] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-                {filtered.map(c => (
+              <div className="max-h-[300px] overflow-y-auto space-y-2 pr-2">
+                {concesionarios.filter(c => c.nombre.toLowerCase().includes(filter.toLowerCase())).map(c => (
                   <button
                     key={c.id}
-                    disabled={loading}
-                    onClick={() => vincularExistente(c.id)}
-                    className="w-full flex items-center justify-between p-5 bg-neutral-800/30 border border-neutral-800 rounded-2xl hover:border-red-600 hover:bg-red-600/10 transition-all group disabled:opacity-50"
+                    onClick={() => setConfirmingAction({type: 'select', id: c.id})}
+                    className="w-full flex items-center justify-between p-5 bg-neutral-800/30 border border-neutral-800 rounded-2xl hover:border-red-600 transition-all group"
                   >
                     <div className="text-left">
-                      <p className="text-white font-black italic uppercase group-hover:text-red-500 transition-colors">{c.nombre}</p>
-                      <p className="text-neutral-600 text-[9px] font-mono tracking-tighter uppercase">{c.localidad || 'Ubicación no definida'}</p>
+                      <p className="text-white font-black italic uppercase group-hover:text-red-500">{c.nombre}</p>
+                      <p className="text-neutral-600 text-[9px] font-mono uppercase">{c.localidad || 'Ubicación no definida'}</p>
                     </div>
-                    <Check className="text-red-600 opacity-0 group-hover:opacity-100 transition-all" size={20} />
+                    <Check className="text-red-600 opacity-0 group-hover:opacity-100" size={20} />
                   </button>
                 ))}
-                {filtered.length === 0 && (
-                  <p className="text-center text-neutral-600 font-bold italic py-10 uppercase text-xs">Sin coincidencias</p>
-                )}
               </div>
             </div>
           ) : (
             <div className="space-y-6">
-              <div>
-                <label className="block text-[10px] font-black text-neutral-500 uppercase tracking-[0.3em] mb-3 italic">Razón Social / Nombre</label>
-                <input 
-                  autoFocus
-                  type="text"
-                  value={nombreNuevo}
-                  onChange={(e) => setNombreNuevo(e.target.value)}
-                  placeholder="EJ: MAQUINARIAS RAFAELA"
-                  className="w-full bg-black border border-neutral-800 rounded-2xl p-5 text-white font-black italic focus:border-red-600 outline-none transition-all uppercase text-xl"
-                />
-              </div>
+              <label className="block text-[10px] font-black text-neutral-500 uppercase tracking-[0.3em] mb-3 italic">Razón Social / Nombre</label>
+              <input 
+                type="text" value={nombreNuevo} onChange={(e) => setNombreNuevo(e.target.value)}
+                placeholder="EJ: MAQUINARIAS RAFAELA"
+                className="w-full bg-black border border-neutral-800 rounded-2xl p-5 text-white font-black italic focus:border-red-600 outline-none uppercase text-xl"
+              />
               <button
-                disabled={loading || !nombreNuevo}
-                onClick={handleCrearYVincular}
-                className="w-full bg-red-600 hover:bg-red-700 text-white py-5 rounded-2xl font-black italic uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl shadow-red-900/20 transition-all disabled:opacity-50"
+                disabled={!nombreNuevo}
+                onClick={() => setConfirmingAction({type: 'create'})}
+                className="w-full bg-red-600 hover:bg-red-700 text-white py-5 rounded-2xl font-black italic uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl transition-all disabled:opacity-50"
               >
-                <Save size={20} /> {loading ? 'SINCRONIZANDO...' : 'GUARDAR Y VINCULAR'}
+                <Save size={20} /> GUARDAR Y VINCULAR
               </button>
             </div>
           )}
