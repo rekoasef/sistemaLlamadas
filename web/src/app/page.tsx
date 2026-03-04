@@ -171,7 +171,7 @@ export default function DashboardPage() {
           </div>
         </div>
         <StatCard label="Ratio Eficiencia" value={`${stats.eficiencia}%`} color="text-green-500" bar progress={stats.eficiencia} sub="Franja 7-19hs" icon={<Zap size={40} className="opacity-10 group-hover:opacity-100 transition-opacity" />} />
-        <StatCard label="Incidencias Críticas" value={stats.perdidasComerciales} color="text-red-600" icon={<AlertCircle size={40} className="opacity-20 group-hover:animate-bounce" />} sub="Perdidas (07-19hs)" glow />
+        <StatCard label="Llamadas Perdidas" value={stats.perdidasComerciales} color="text-red-600" icon={<AlertCircle size={40} className="opacity-20 group-hover:animate-bounce" />} sub="Perdidas (07-19hs)" glow />
       </div>
 
       {/* TABLA PRINCIPAL */}

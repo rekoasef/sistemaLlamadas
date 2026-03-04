@@ -69,7 +69,7 @@ Para el correcto funcionamiento de la automatización, es necesario ejecutar los
 
 [x] Triggers de vinculación retroactiva.
 
-[ ] Inteligencia BI: Módulo de analítica avanzada y reportes semanales.
+[x] Inteligencia BI: Módulo de analítica avanzada y reportes semanales.
 
 [ ] Exportación: Reportes en PDF de rendimiento por terminal.
 

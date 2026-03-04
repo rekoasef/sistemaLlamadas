@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import Link from 'next/link' // IMPORTANTE: Para la navegación
+import Link from 'next/link'
 import { 
   Building2, 
   Phone, 
@@ -13,7 +13,7 @@ import {
   Search,
   ChevronRight,
   RefreshCw,
-  BarChart3 // Icono para el dashboard
+  BarChart3
 } from 'lucide-react'
 import ModalEditarConcesionario from '@/components/ModalEditarConcesionario'
 
@@ -28,7 +28,10 @@ export default function ConcesionariosPage() {
     try {
       const { data, error } = await supabase
         .from('concesionarios')
-        .select('*') // Simplificado para usar el array 'telefonos' de la tabla base 
+        .select(`
+          *,
+          concesionario_telefonos (count)
+        `)
         .order('nombre', { ascending: true })
 
       if (error) throw error
@@ -115,7 +118,6 @@ export default function ConcesionariosPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {filtered.map((c) => (
           <div key={c.id} className="group bg-neutral-900/40 border border-neutral-800 p-8 rounded-[2.5rem] hover:border-red-600 transition-all relative overflow-hidden">
-            
             <div className="relative z-10">
               <div className="flex justify-between items-start mb-6">
                 <div className="p-3 bg-red-600/10 rounded-xl border border-red-600/20 text-red-600">
@@ -142,11 +144,11 @@ export default function ConcesionariosPage() {
                 </div>
                 <div className="flex items-center gap-3 text-neutral-400 text-[11px] font-black uppercase italic tracking-wider">
                   <Phone size={14} className="text-red-600" />
-                  {c.telefonos?.length || 0} LÍNEAS REGISTRADAS
+                  {/* FIX: Leemos el count de la relación */}
+                  {c.concesionario_telefonos?.[0]?.count || 0} LÍNEAS REGISTRADAS
                 </div>
               </div>
 
-              {/* CAMBIO CLAVE: LINK AL DASHBOARD DEL CONCESIONARIO */}
               <Link 
                 href={`/concesionarios/${c.id}`}
                 className="w-full mt-10 py-4 bg-neutral-800 group-hover:bg-red-600 group-hover:text-white text-neutral-500 text-[10px] font-black uppercase tracking-[0.3em] rounded-xl transition-all flex items-center justify-center gap-2 italic shadow-inner"
