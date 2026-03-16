@@ -5,13 +5,10 @@ import { supabase } from '@/lib/supabase'
 import {
   PhoneIncoming, PhoneOutgoing, Activity, UserPlus, Monitor, RefreshCw,
   Calendar as CalendarIcon, ArrowDownLeft, ArrowUpRight, TrendingUp,
-  ChevronLeft, ChevronRight, Zap, Clock, Wifi, AlertCircle, Hourglass
+  ChevronLeft, ChevronRight, Zap, Clock, Wifi, AlertCircle, Hourglass, X
 } from 'lucide-react'
 import ModalVincular from '@/components/ModalVincular'
 
-// ==========================================
-// RELOJ DIGITAL Y FECHA (HEADER)
-// ==========================================
 function LiveClock() {
   const [time, setTime] = useState(new Date())
   const [mounted, setMounted] = useState(false)
@@ -45,19 +42,49 @@ export default function DashboardPage() {
   const [showModal, setShowModal] = useState(false)
   const [selectedNum, setSelectedNum] = useState('')
   const [eventFlash, setEventFlash] = useState(false)
-  const [filtroFecha, setFiltroFecha] = useState('')
+  
   const [filtroDispositivo, setFiltroDispositivo] = useState('TODOS')
+  const [usarCalendario, setUsarCalendario] = useState(false)
+  const [periodo, setPeriodo] = useState<'dia' | 'semana' | 'mes' | 'total'>('total')
+  const [fechaEspecifica, setFechaEspecifica] = useState('')
+  const [mesSeleccionado, setMesSeleccionado] = useState(new Date().getMonth() + 1)
+  const [anioSeleccionado, setAnioSeleccionado] = useState(new Date().getFullYear())
 
   const fetchLlamadas = useCallback(async () => {
     setLoading(true)
-    const { data } = await supabase
+    
+    // MODIFICADO: Incluye relación con dispositivo_alias
+    let query = supabase
       .from('llamadas')
-      .select('*, concesionarios:concesionario_id (nombre)')
+      .select('*, concesionarios:concesionario_id (nombre), dispositivo:dispositivo_id(alias)')
       .order('fecha_llamada', { ascending: false })
-      .limit(200)
+
+    if (!usarCalendario) {
+      const ahora = new Date()
+      if (periodo === 'dia') {
+        const hoy = new Date(ahora.setHours(0,0,0,0)).toISOString()
+        query = query.gte('fecha_llamada', hoy)
+      } else if (periodo === 'semana') {
+        const haceSieteDias = new Date(ahora.setDate(ahora.getDate() - 7)).toISOString()
+        query = query.gte('fecha_llamada', haceSieteDias)
+      } else if (periodo === 'mes') {
+        const haceUnMes = new Date(ahora.setMonth(ahora.getMonth() - 1)).toISOString()
+        query = query.gte('fecha_llamada', haceUnMes)
+      }
+    } else {
+      if (fechaEspecifica) {
+        query = query.gte('fecha_llamada', `${fechaEspecifica}T00:00:00`).lte('fecha_llamada', `${fechaEspecifica}T23:59:59`)
+      } else {
+        const inicio = new Date(anioSeleccionado, mesSeleccionado - 1, 1).toISOString()
+        const fin = new Date(anioSeleccionado, mesSeleccionado, 0, 23, 59, 59).toISOString()
+        query = query.gte('fecha_llamada', inicio).lte('fecha_llamada', fin)
+      }
+    }
+
+    const { data } = await query.limit(200)
     setLlamadasRaw(data || [])
     setLoading(false)
-  }, [])
+  }, [periodo, usarCalendario, fechaEspecifica, mesSeleccionado, anioSeleccionado])
 
   useEffect(() => {
     fetchLlamadas()
@@ -66,7 +93,8 @@ export default function DashboardPage() {
         setEventFlash(true)
         setTimeout(() => setEventFlash(false), 2000)
         const id = payload.new ? (payload.new as any).id : (payload.old as any).id
-        const { data: fullRow } = await supabase.from('llamadas').select('*, concesionarios:concesionario_id (nombre)').eq('id', id).single()
+        // MODIFICADO: Fetch de realtime también trae el alias
+        const { data: fullRow } = await supabase.from('llamadas').select('*, concesionarios:concesionario_id (nombre), dispositivo:dispositivo_id(alias)').eq('id', id).single()
         if (fullRow) {
           setLlamadasRaw(prev => {
             const index = prev.findIndex(l => l.id === fullRow.id)
@@ -82,11 +110,9 @@ export default function DashboardPage() {
 
   const filtradas = useMemo(() => {
     return llamadasRaw.filter(ll => {
-      const matchDisp = filtroDispositivo === 'TODOS' || ll.dispositivo_id === filtroDispositivo
-      const matchFecha = !filtroFecha || ll.fecha_llamada.startsWith(filtroFecha)
-      return matchDisp && matchFecha
+      return filtroDispositivo === 'TODOS' || ll.dispositivo_id === filtroDispositivo
     })
-  }, [llamadasRaw, filtroFecha, filtroDispositivo])
+  }, [llamadasRaw, filtroDispositivo])
 
   const stats = useMemo(() => {
     let entrantes = 0, salientes = 0, auditadasTotal = 0, atendidasAuditadas = 0, perdidasComerciales = 0
@@ -94,7 +120,6 @@ export default function DashboardPage() {
       if (l.tipo_llamada === 'ENTRANTE') entrantes++
       else salientes++
       const hora = new Date(l.fecha_llamada).getHours()
-      // Filtro Comercial (07:00 - 19:00) [cite: 74, 83]
       if (hora >= 7 && hora < 19) {
         auditadasTotal++
         if (l.estado === 'ATENDIDA') atendidasAuditadas++
@@ -111,10 +136,10 @@ export default function DashboardPage() {
   const totalPages = Math.ceil(filtradas.length / itemsPerPage)
 
   const formatDuracion = (ll: any) => {
-    const segundos = ll.duracion_segundos || 0; // [cite: 47, 79]
+    const segundos = ll.duracion_segundos || 0;
     if (segundos === 0) return '00:00';
-    const mins = Math.floor(segundos / 60); // [cite: 88]
-    const secs = segundos % 60; // [cite: 89]
+    const mins = Math.floor(segundos / 60);
+    const secs = segundos % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   }
 
@@ -122,7 +147,6 @@ export default function DashboardPage() {
     <div className={`max-w-7xl mx-auto space-y-8 animate-in fade-in duration-700 pb-20 px-4 pt-10 ${eventFlash ? 'ring-1 ring-red-600/20' : ''}`}>
       {showModal && <ModalVincular numero={selectedNum} onClose={() => setShowModal(false)} onSuccess={fetchLlamadas} />}
 
-      {/* HEADER */}
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 border-b border-neutral-800 pb-10">
         <div className="space-y-4">
           <div className="flex items-center gap-3 bg-red-600/10 w-fit px-4 py-1.5 rounded-full border border-red-600/20">
@@ -133,25 +157,51 @@ export default function DashboardPage() {
             PANEL <span className="text-red-600 drop-shadow-[0_0_20px_rgba(220,38,38,0.4)]">GENERAL</span>
           </h1>
         </div>
+
         <div className="flex flex-wrap items-center gap-4">
           <LiveClock />
-          <div className="flex items-center gap-4 bg-neutral-900/50 p-2 rounded-[2rem] border border-neutral-800 backdrop-blur-md">
-            <div className="flex items-center gap-2 bg-black/40 px-4 py-2 rounded-2xl border border-neutral-800 focus-within:border-red-600 transition-all">
-              <CalendarIcon size={14} className="text-red-600" />
-              <input type="date" className="bg-transparent text-white text-[10px] font-black uppercase outline-none" style={{ colorScheme: 'dark' }} onChange={e => setFiltroFecha(e.target.value)} value={filtroFecha} />
-            </div>
-            <div className="flex items-center gap-2 bg-black/40 px-4 py-2 rounded-2xl border border-neutral-800 focus-within:border-red-600 transition-all">
-              <Monitor size={14} className="text-red-600" />
-              <select className="bg-transparent text-red-600 text-[10px] font-black uppercase outline-none cursor-pointer" onChange={e => setFiltroDispositivo(e.target.value)} value={filtroDispositivo}>
-                <option value="TODOS">TODOS LOS PUESTOS</option>
-                {Array.from(new Set(llamadasRaw.map(l => l.dispositivo_id))).map(id => <option key={id} value={id}>PUESTO {id}</option>)}
-              </select>
-            </div>
+          
+          <div className="flex flex-col gap-3">
+             <div className="flex bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden self-end">
+                <button onClick={() => setUsarCalendario(false)} className={`px-4 py-2 text-[9px] font-black uppercase ${!usarCalendario ? 'bg-red-600 text-white' : 'text-neutral-500'}`}>Rápido</button>
+                <button onClick={() => setUsarCalendario(true)} className={`px-4 py-2 text-[9px] font-black uppercase ${usarCalendario ? 'bg-red-600 text-white' : 'text-neutral-500'}`}>Calendario</button>
+             </div>
+
+             <div className="flex items-center gap-4 bg-neutral-900/50 p-2 rounded-[2rem] border border-neutral-800 backdrop-blur-md">
+                {!usarCalendario ? (
+                  <div className="flex items-center gap-1">
+                    {['dia', 'semana', 'mes', 'total'].map((t) => (
+                      <button key={t} onClick={() => setPeriodo(t as any)} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase transition-all ${periodo === t ? 'bg-red-600 text-white' : 'text-neutral-500 hover:text-white'}`}>
+                        {t === 'dia' ? 'Hoy' : t === 'semana' ? '7 Días' : t === 'mes' ? '30 Días' : 'Todo'}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex gap-2 items-center px-2">
+                    <input type="date" value={fechaEspecifica} onChange={(e) => setFechaEspecifica(e.target.value)} className="bg-black border border-neutral-800 rounded-lg p-2 text-white text-[9px] font-black uppercase outline-none focus:border-red-600"/>
+                    <select value={mesSeleccionado} onChange={(e) => setMesSeleccionado(Number(e.target.value))} className="bg-black border border-neutral-800 rounded-lg p-2 text-white text-[9px] font-black uppercase outline-none cursor-pointer">
+                      {["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"].map((m, i) => <option key={m} value={i+1}>{m}</option>)}
+                    </select>
+                    <select value={anioSeleccionado} onChange={(e) => setAnioSeleccionado(Number(e.target.value))} className="bg-black border border-neutral-800 rounded-lg p-2 text-white text-[9px] font-black uppercase outline-none cursor-pointer">
+                      {[2024, 2025, 2026].map(a => <option key={a} value={a}>{a}</option>)}
+                    </select>
+                  </div>
+                )}
+                
+                <div className="h-8 w-px bg-neutral-800 mx-1" />
+                
+                <div className="flex items-center gap-2 bg-black/40 px-4 py-2 rounded-2xl border border-neutral-800 focus-within:border-red-600 transition-all">
+                  <Monitor size={14} className="text-red-600" />
+                  <select className="bg-transparent text-red-600 text-[10px] font-black uppercase outline-none cursor-pointer" onChange={e => setFiltroDispositivo(e.target.value)} value={filtroDispositivo}>
+                    <option value="TODOS">TODOS LOS PUESTOS</option>
+                    {Array.from(new Set(llamadasRaw.map(l => l.dispositivo_id))).map(id => <option key={id} value={id}>PUESTO {id}</option>)}
+                  </select>
+                </div>
+             </div>
           </div>
         </div>
       </div>
 
-      {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-neutral-900/50 border border-neutral-800 p-10 rounded-[3.5rem] relative group overflow-hidden shadow-2xl transition-all hover:border-red-600/50 backdrop-blur-md">
           <p className="text-neutral-500 text-[10px] font-black uppercase tracking-widest italic mb-6">Volumen de Red</p>
@@ -174,7 +224,6 @@ export default function DashboardPage() {
         <StatCard label="Llamadas Perdidas" value={stats.perdidasComerciales} color="text-red-600" icon={<AlertCircle size={40} className="opacity-20 group-hover:animate-bounce" />} sub="Perdidas (07-19hs)" glow />
       </div>
 
-      {/* TABLA PRINCIPAL */}
       <div className="bg-neutral-900/40 border border-neutral-800 rounded-[3.5rem] overflow-hidden shadow-2xl backdrop-blur-md">
         <div className="px-12 py-10 border-b border-neutral-800 bg-neutral-900/50 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -234,8 +283,6 @@ export default function DashboardPage() {
                   <td className="px-12 py-8 text-center">
                     <span className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase border tracking-widest ${ll.estado?.toUpperCase() === 'ATENDIDA' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-red-600/10 text-red-600 border-red-600/20 shadow-[0_0_15px_rgba(220,38,38,0.2)]'}`}>{ll.estado}</span>
                   </td>
-                  
-                  {/* COLUMNA ORIGEN CORREGIDA: HORA ARRIBA, FECHA ABAJO */}
                   <td className="px-12 py-8 text-right">
                     <div className="flex flex-col items-end gap-1">
                       <span suppressHydrationWarning className="text-white font-black italic text-2xl tracking-tighter group-hover:text-red-500 transition-colors leading-none">
@@ -245,7 +292,9 @@ export default function DashboardPage() {
                         {new Date(ll.fecha_llamada).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                       </span>
                       <div className="flex items-center gap-2 text-[10px] font-black text-neutral-600 uppercase italic tracking-widest mt-1">
-                        <Monitor size={12} className="text-red-600" /> ST-{ll.dispositivo_id}
+                        <Monitor size={12} className="text-red-600" /> 
+                        {/* MODIFICADO: Muestra Alias si existe, sino ID */}
+                        {ll.dispositivo?.alias || `ST-${ll.dispositivo_id}`}
                       </div>
                     </div>
                   </td>
