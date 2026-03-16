@@ -36,6 +36,7 @@ function LiveClock() {
 
 export default function DashboardPage() {
   const [llamadasRaw, setLlamadasRaw] = useState<any[]>([])
+  const [aliasMap, setAliasMap] = useState<Record<string, string>>({}) // NUEVO: Mapa de alias
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(20)
@@ -53,10 +54,16 @@ export default function DashboardPage() {
   const fetchLlamadas = useCallback(async () => {
     setLoading(true)
     
-    // MODIFICADO: Incluye relación con dispositivo_alias
+    // 1. Traemos los alias primero para tenerlos en memoria
+    const { data: aliases } = await supabase.from('dispositivo_alias').select('*')
+    const aMap: Record<string, string> = {}
+    aliases?.forEach(a => aMap[a.dispositivo_id] = a.alias)
+    setAliasMap(aMap)
+
+    // 2. Traemos las llamadas (Consulta limpia sin Joins de dispositivo que rompan el conteo)
     let query = supabase
       .from('llamadas')
-      .select('*, concesionarios:concesionario_id (nombre), dispositivo:dispositivo_id(alias)')
+      .select('*, concesionarios:concesionario_id (nombre)')
       .order('fecha_llamada', { ascending: false })
 
     if (!usarCalendario) {
@@ -93,8 +100,7 @@ export default function DashboardPage() {
         setEventFlash(true)
         setTimeout(() => setEventFlash(false), 2000)
         const id = payload.new ? (payload.new as any).id : (payload.old as any).id
-        // MODIFICADO: Fetch de realtime también trae el alias
-        const { data: fullRow } = await supabase.from('llamadas').select('*, concesionarios:concesionario_id (nombre), dispositivo:dispositivo_id(alias)').eq('id', id).single()
+        const { data: fullRow } = await supabase.from('llamadas').select('*, concesionarios:concesionario_id (nombre)').eq('id', id).single()
         if (fullRow) {
           setLlamadasRaw(prev => {
             const index = prev.findIndex(l => l.id === fullRow.id)
@@ -133,7 +139,7 @@ export default function DashboardPage() {
   }, [filtradas])
 
   const paginadas = filtradas.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-  const totalPages = Math.ceil(filtradas.length / itemsPerPage)
+  const totalPages = Math.ceil(filtradas.length / itemsPerPage) || 1
 
   const formatDuracion = (ll: any) => {
     const segundos = ll.duracion_segundos || 0;
@@ -194,7 +200,9 @@ export default function DashboardPage() {
                   <Monitor size={14} className="text-red-600" />
                   <select className="bg-transparent text-red-600 text-[10px] font-black uppercase outline-none cursor-pointer" onChange={e => setFiltroDispositivo(e.target.value)} value={filtroDispositivo}>
                     <option value="TODOS">TODOS LOS PUESTOS</option>
-                    {Array.from(new Set(llamadasRaw.map(l => l.dispositivo_id))).map(id => <option key={id} value={id}>PUESTO {id}</option>)}
+                    {Array.from(new Set(llamadasRaw.map(l => l.dispositivo_id))).map(id => (
+                      <option key={id} value={id}>{aliasMap[id] || `PUESTO ${id}`}</option>
+                    ))}
                   </select>
                 </div>
              </div>
@@ -293,8 +301,8 @@ export default function DashboardPage() {
                       </span>
                       <div className="flex items-center gap-2 text-[10px] font-black text-neutral-600 uppercase italic tracking-widest mt-1">
                         <Monitor size={12} className="text-red-600" /> 
-                        {/* MODIFICADO: Muestra Alias si existe, sino ID */}
-                        {ll.dispositivo?.alias || `ST-${ll.dispositivo_id}`}
+                        {/* MAPEO SEGURO EN EL CLIENTE */}
+                        {aliasMap[ll.dispositivo_id] || `ST-${ll.dispositivo_id}`}
                       </div>
                     </div>
                   </td>
