@@ -562,7 +562,7 @@ export default function DashboardPlantaPage() {
       <section className="shrink-0 flex gap-4 px-10 py-4">
         <KpiHero
           label="Entrantes Totales"
-          value={loading ? '—' : kpis.entrantes}
+          value={loading ? '—' : kpis.total}
           sub="llamadas"
           valueColor="text-white"
           icon={<PhoneIncoming size={28} />}
