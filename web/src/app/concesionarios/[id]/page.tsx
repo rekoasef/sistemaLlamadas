@@ -37,14 +37,14 @@ export default function ConcesionarioDetalle() {
     const { data: info } = await supabase
       .from('concesionarios')
       .select('*, concesionario_telefonos(*)')
-      .eq('id', id)
+      .eq('id', Array.isArray(id) ? id[0] : id)
       .single()
-    
+
     // 2. Construir query de llamadas [cite: 74, 97]
     let query = supabase
       .from('llamadas')
       .select('*')
-      .eq('concesionario_id', id)
+      .eq('concesionario_id', Array.isArray(id) ? id[0] : id)
 
     if (!usarCalendario) {
       const ahora = new Date()
