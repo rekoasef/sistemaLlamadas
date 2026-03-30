@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useMemo, useRef, memo } from 'react'
-import { Wifi, Monitor, TrendingUp, PhoneIncoming, PhoneMissed, Activity } from 'lucide-react'
+import { Wifi, Monitor, TrendingUp, PhoneIncoming, PhoneMissed, Activity, Map } from 'lucide-react'
 import { fetchLlamadasWallboard, type RangoWallboard } from '@/services/llamadas.service'
 import { fetchAliasMap } from '@/services/alias.service'
 import { calcularKPIs } from '@/lib/kpi'
@@ -15,6 +15,7 @@ import {
 } from '@/lib/wallboard'
 import { supabase } from '@/lib/supabase'
 import type { LlamadaConConcesionario, AliasMap, KPIStats } from '@/types/domain'
+import Link from 'next/link'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -319,46 +320,6 @@ const ConcesionarioRow = memo(function ConcesionarioRow({
     </div>
   )
 })
-
-// ─────────────────────────────────────────────────────────────────────────────
-
-const ArgentinaMapPlaceholder = memo(function ArgentinaMapPlaceholder() {
-  return (
-    <div className="flex flex-col items-center justify-center h-full gap-4 opacity-60">
-      <svg
-        viewBox="0 0 120 200"
-        className="w-24 h-40 fill-none stroke-red-600/50"
-        strokeWidth="2"
-        strokeLinejoin="round"
-      >
-        <path d="
-          M 55 10 L 75 12 L 85 20 L 90 30 L 85 38 L 90 46 L 80 56
-          L 82 68 L 75 76 L 78 88 L 70 98 L 72 110 L 65 122
-          L 60 138 L 55 152 L 50 164 L 45 174 L 42 185 L 40 192
-          L 38 195 L 35 190 L 33 180 L 30 170 L 28 158 L 30 145
-          L 28 132 L 32 118 L 30 105 L 35 92 L 32 80 L 38 68
-          L 35 56 L 40 45 L 38 34 L 42 24 L 50 15 Z
-        " />
-        <path d="M 35 188 L 45 195 L 50 190 L 42 185 Z" />
-      </svg>
-      <div className="text-center">
-        <p className="text-red-600/70 text-xs font-black uppercase tracking-widest italic">
-          Mapa Provincial
-        </p>
-        <p className="text-neutral-700 text-[10px] font-bold uppercase tracking-widest mt-1">
-          Heatmap de Tráfico
-        </p>
-        <p className="text-neutral-800 text-[9px] uppercase tracking-widest mt-2">
-          Implementación futura
-        </p>
-      </div>
-    </div>
-  )
-})
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Page
-// ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Dashboard Planta — Wallboard view for call center TVs.
@@ -678,7 +639,7 @@ export default function DashboardPlantaPage() {
           )}
         </div>
 
-        {/* ── COL 3: Top 10 Concesionarios + Mapa ─────────────────────── */}
+        {/* ── COL 3: Top 10 Concesionarios + Acceso Mapa ──────────────── */}
         <div className="w-[28%] shrink-0 flex flex-col gap-4">
 
           {/* Top 10 Concesionarios */}
@@ -717,10 +678,23 @@ export default function DashboardPlantaPage() {
             </div>
           </div>
 
-          {/* Mapa Provincial Placeholder */}
-          <div className="h-[30%] shrink-0 bg-neutral-900/50 border border-neutral-800 rounded-3xl overflow-hidden">
-            <ArgentinaMapPlaceholder />
-          </div>
+          {/* Acceso rápido al mapa */}
+          <Link
+            href="/mapa"
+            className="h-[18%] shrink-0 bg-neutral-900/30 border border-neutral-800 hover:border-red-600/50 rounded-3xl flex items-center justify-center gap-4 transition-all duration-300 group hover:bg-red-600/5"
+          >
+            <div className="p-3 bg-neutral-800 group-hover:bg-red-600 rounded-2xl transition-all duration-300">
+              <Map size={20} className="text-neutral-400 group-hover:text-white transition-colors" />
+            </div>
+            <div className="flex flex-col leading-none">
+              <span className="text-neutral-400 group-hover:text-white font-black italic uppercase text-sm tracking-tight transition-colors">
+                Mapa de Actividad
+              </span>
+              <span className="text-neutral-700 text-[9px] font-black uppercase tracking-widest mt-1">
+                Ver distribución geográfica →
+              </span>
+            </div>
+          </Link>
         </div>
       </div>
     </div>

@@ -50,6 +50,10 @@ export type Database = {
           localidad: string | null
           nombre: string
           telefono_principal: string
+          ciudad: string | null
+          provincia: string | null
+          latitud: number | null
+          longitud: number | null
         }
         Insert: {
           created_at?: string | null
@@ -57,6 +61,10 @@ export type Database = {
           localidad?: string | null
           nombre: string
           telefono_principal: string
+          ciudad?: string | null
+          provincia?: string | null
+          latitud?: number | null
+          longitud?: number | null
         }
         Update: {
           created_at?: string | null
@@ -64,6 +72,10 @@ export type Database = {
           localidad?: string | null
           nombre?: string
           telefono_principal?: string
+          ciudad?: string | null
+          provincia?: string | null
+          latitud?: number | null
+          longitud?: number | null
         }
         Relationships: []
       }

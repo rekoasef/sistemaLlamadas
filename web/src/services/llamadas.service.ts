@@ -65,7 +65,7 @@ export async function fetchLlamadas(
 ): Promise<LlamadaConConcesionario[]> {
   let query = supabase
     .from('llamadas')
-    .select('*, concesionarios:concesionario_id (nombre)')
+    .select('*, concesionarios:concesionario_id (nombre, provincia, ciudad, latitud, longitud)')
     .order('fecha_llamada', { ascending: false })
 
   const range = buildDateRange(filtro)
@@ -86,7 +86,7 @@ export async function fetchLlamadaById(
 ): Promise<LlamadaConConcesionario | null> {
   const { data, error } = await supabase
     .from('llamadas')
-    .select('*, concesionarios:concesionario_id (nombre)')
+    .select('*, concesionarios:concesionario_id (nombre, provincia, ciudad, latitud, longitud)')
     .eq('id', id)
     .single()
 
@@ -104,7 +104,7 @@ export async function fetchLlamadasByRange(
 ): Promise<LlamadaConConcesionario[]> {
   const { data, error } = await supabase
     .from('llamadas')
-    .select('*, concesionarios:concesionario_id (nombre)')
+    .select('*, concesionarios:concesionario_id (nombre, provincia, ciudad, latitud, longitud)')
     .gte('fecha_llamada', `${fechaInicio}T00:00:00`)
     .lte('fecha_llamada', `${fechaFin}T23:59:59`)
 
@@ -126,7 +126,7 @@ export async function fetchLlamadasHoy(): Promise<LlamadaConConcesionario[]> {
 
   const { data, error } = await supabase
     .from('llamadas')
-    .select('*, concesionarios:concesionario_id (nombre)')
+    .select('*, concesionarios:concesionario_id (nombre, provincia, ciudad, latitud, longitud)')
     .gte('fecha_llamada', gte)
     .lte('fecha_llamada', lte)
     .order('fecha_llamada', { ascending: false })
@@ -142,7 +142,7 @@ export async function fetchLlamadasHoy(): Promise<LlamadaConConcesionario[]> {
 export async function fetchTodasLasLlamadas(): Promise<LlamadaConConcesionario[]> {
   const { data, error } = await supabase
     .from('llamadas')
-    .select('*, concesionarios:concesionario_id (nombre)')
+    .select('*, concesionarios:concesionario_id (nombre, provincia, ciudad, latitud, longitud)')
 
   if (error) throw new Error(`[llamadas.service] fetchTodasLasLlamadas: ${error.message}`)
   return (data as LlamadaConConcesionario[]) ?? []
@@ -173,7 +173,7 @@ export async function fetchLlamadasWallboard(
 
   const { data, error } = await supabase
     .from('llamadas')
-    .select('*, concesionarios:concesionario_id (nombre)')
+    .select('*, concesionarios:concesionario_id (nombre, provincia, ciudad, latitud, longitud)')
     .gte('fecha_llamada', gte.toISOString())
     .order('fecha_llamada', { ascending: false })
 

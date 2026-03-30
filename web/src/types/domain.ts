@@ -10,7 +10,13 @@ import type { Tables } from './supabase'
  * only the display name is needed in all current views.
  */
 export type LlamadaConConcesionario = Tables<'llamadas'> & {
-  concesionarios: { nombre: string } | null
+  concesionarios: {
+    nombre: string
+    provincia: string | null
+    ciudad: string | null
+    latitud: number | null
+    longitud: number | null
+  } | null
 }
 
 /** Raw alias row re-exported for convenience. */
@@ -33,19 +39,24 @@ export type AliasMap = Record<string, string>
 
 /**
  * Computed KPI summary for a set of calls.
- * Efficiency is audited only within the commercial window 07:00–19:00hs,
- * per Crucianelli's operational policy.
+ *
+ * Efficiency uses the Gestión Proactiva model:
+ *   Puntos Positivos    = Entrantes Atendidas + Todas las Salientes
+ *   Total Interacciones = Total Entrantes     + Todas las Salientes
+ *   Eficiencia          = (Puntos Positivos / Total Interacciones) × 100
  */
 export interface KPIStats {
   total: number
   entrantes: number
   salientes: number
-  /** Calls answered during the audited commercial window. */
+  /** Incoming calls answered (entrantes atendidas). */
   atendidas: number
-  /** Percentage: (atendidas / auditadasTotal) * 100 */
+  /** Percentage: (entrantesAtendidas + salientes) / (entrantes + salientes) × 100 */
   eficiencia: number
-  /** Non-attended calls within the 07–19hs commercial window. */
+  /** Non-attended incoming calls within the 07–19hs commercial window. */
   perdidasComerciales: number
+
+  entrantesPerdidas: number
 }
 
 /** Per-terminal performance metrics used in the BI analytics view. */

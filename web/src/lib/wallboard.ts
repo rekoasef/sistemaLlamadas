@@ -65,11 +65,15 @@ const FRANJAS_COMERCIALES: Pick<FranjaEficiencia, 'label' | 'inicio' | 'fin'>[] 
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Compute efficiency (% answered) per 3-hour commercial slot.
+ * Compute efficiency per 3-hour commercial slot — Gestión Proactiva model.
  *
- * This is the wallboard-facing counterpart to `calcularFugasPorFranja` in kpi.ts.
- * The difference: this measures SUCCESS (atendidas/total), not loss, which is
- * the positive framing appropriate for a public TV display.
+ * Per-slot formula (mirrors calcularKPIs):
+ *   Puntos Positivos    = Entrantes Atendidas en franja + Salientes en franja
+ *   Total Interacciones = Total Entrantes en franja     + Salientes en franja
+ *   Eficiencia          = (Puntos Positivos / Total Interacciones) × 100
+ *
+ * The `atendidas` field holds Puntos Positivos for display purposes
+ * (shown as "atendidas/total" in the wallboard row).
  *
  * @param llamadas - All today's calls (already filtered to the current day).
  * @returns Four FranjaEficiencia entries in chronological order.
@@ -83,21 +87,28 @@ export function calcularEficienciaFranjas(
       const h = new Date(ll.fecha_llamada).getHours()
       return h >= inicio && h < fin
     })
-    const atendidas = enFranja.filter(
+    const entrantes = enFranja.filter((ll) => ll.tipo_llamada?.toUpperCase() === 'ENTRANTE')
+    const salientes = enFranja.filter((ll) => ll.tipo_llamada?.toUpperCase() !== 'ENTRANTE')
+    const entrantesAtendidas = entrantes.filter(
       (ll) => ll.estado?.toUpperCase() === 'ATENDIDA'
     ).length
-    const total = enFranja.length
-    const eficiencia = total > 0 ? Math.round((atendidas / total) * 100) : 0
-    return { label, inicio, fin, atendidas, total, eficiencia }
+    const puntosPositivos = entrantesAtendidas + salientes.length
+    const total = entrantes.length + salientes.length
+    const eficiencia = total > 0 ? Math.round((puntosPositivos / total) * 100) : 0
+    return { label, inicio, fin, atendidas: puntosPositivos, total, eficiencia }
   })
 }
 
 /**
- * Rank active terminals by total calls descending with per-terminal efficiency.
+ * Rank active terminals by total interactions with per-terminal efficiency.
  *
- * All calls (commercial and off-hours) are counted here so the wallboard
- * reflects real station activity throughout the day, not just audited hours.
- * Terminals with zero calls are excluded from the grid.
+ * Applies the Gestión Proactiva model per terminal:
+ *   Puntos Positivos    = Entrantes Atendidas + Todas las Salientes del terminal
+ *   Total Interacciones = Total Entrantes     + Todas las Salientes del terminal
+ *   Eficiencia          = (Puntos Positivos / Total Interacciones) × 100
+ *
+ * The `atendidas` field holds Puntos Positivos so existing UI components
+ * render the correct ratio without interface changes.
  *
  * @param llamadas - All today's calls.
  * @param aliasMap - Device ID → human label lookup (built from dispositivo_alias).
@@ -106,25 +117,33 @@ export function calcularRankingTerminales(
   llamadas: LlamadaConConcesionario[],
   aliasMap: AliasMap
 ): TerminalRanking[] {
-  const map = new Map<string, { total: number; atendidas: number }>()
+  const map = new Map<string, { entrantes: number; entrantesAtendidas: number; salientes: number }>()
 
   for (const ll of llamadas) {
     const id = ll.dispositivo_id ?? 'S/D'
-    if (!map.has(id)) map.set(id, { total: 0, atendidas: 0 })
+    if (!map.has(id)) map.set(id, { entrantes: 0, entrantesAtendidas: 0, salientes: 0 })
     const t = map.get(id)!
-    t.total++
-    if (ll.estado?.toUpperCase() === 'ATENDIDA') t.atendidas++
+    if (ll.tipo_llamada?.toUpperCase() === 'ENTRANTE') {
+      t.entrantes++
+      if (ll.estado?.toUpperCase() === 'ATENDIDA') t.entrantesAtendidas++
+    } else {
+      t.salientes++
+    }
   }
 
   return Array.from(map.entries())
-    .filter(([, t]) => t.total > 0)
-    .map(([id, { total, atendidas }]) => ({
-      id,
-      alias: aliasMap[id] ?? `ST-${id}`,
-      total,
-      atendidas,
-      eficiencia: Math.round((atendidas / total) * 100),
-    }))
+    .filter(([, t]) => t.entrantes + t.salientes > 0)
+    .map(([id, { entrantes, entrantesAtendidas, salientes }]) => {
+      const total = entrantes + salientes
+      const atendidas = entrantesAtendidas + salientes // puntos positivos
+      return {
+        id,
+        alias: aliasMap[id] ?? `ST-${id}`,
+        total,
+        atendidas,
+        eficiencia: Math.round((atendidas / total) * 100),
+      }
+    })
     .sort((a, b) => b.total - a.total)
 }
 

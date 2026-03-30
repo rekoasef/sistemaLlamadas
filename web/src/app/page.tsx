@@ -454,7 +454,7 @@ export default function DashboardPage() {
                 {/* Header */}
                 <div className="flex justify-between items-start mb-3">
                   <p className="text-neutral-500 text-[10px] font-black uppercase tracking-widest italic">
-                    Llamadas Perdidas
+                    Llamadas entrantes Perdidas
                   </p>
                   <AlertCircle size={32} className="text-red-600 opacity-10 group-hover:opacity-100 group-hover:animate-bounce transition-all duration-700" />
                 </div>

@@ -19,8 +19,8 @@ interface AppShellProps {
 export default function AppShell({ children }: AppShellProps) {
   const pathname = usePathname()
   const isAuthPage = pathname === '/login'
-  /** Wallboard is a full-screen TV view — sidebar and padding must not appear. */
-  const isFullScreen = pathname === '/dashboard-planta'
+  /** Wallboard and map are full-screen TV views — no sidebar or padding. */
+  const isFullScreen = pathname === '/dashboard-planta' || pathname === '/mapa'
 
   if (isAuthPage || isFullScreen) {
     return <>{children}</>

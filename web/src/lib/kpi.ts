@@ -19,7 +19,7 @@ const HORA_INICIO_COMERCIAL = 7
 const HORA_FIN_COMERCIAL = 19
 
 /** Efficiency threshold below which an alert is triggered in reports. */
-export const UMBRAL_EFICIENCIA = 60
+export const UMBRAL_EFICIENCIA = 80
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -53,45 +53,47 @@ export function formatDuracion(segundos: number | null): string {
 /**
  * Compute KPI summary from a set of calls.
  *
- * Efficiency logic:
- * - Calls within 07–19hs are audited unconditionally.
- * - Attended calls outside commercial hours still count toward the ratio
- *   (answered is always positive), but missed ones outside 07–19hs are NOT
- *   penalised (out-of-hours misses are expected).
+ * Efficiency logic — Gestión Proactiva del Call Center:
+ * - Entrante atendida   → sube la eficiencia (gestión exitosa).
+ * - Entrante no atendida → baja la eficiencia (fuga de cliente).
+ * - Saliente (cualquier resultado) → sube la eficiencia (se premia la proactividad
+ *   del operador al intentar recuperar el llamado, independientemente del resultado).
+ *
+ * Fórmula:
+ *   Puntos Positivos    = Entrantes Atendidas + Todas las Salientes
+ *   Total Interacciones = Total Entrantes     + Todas las Salientes
+ *   Eficiencia          = (Puntos Positivos / Total Interacciones) × 100
  */
 export function calcularKPIs(llamadas: LlamadaConConcesionario[]): KPIStats {
   let entrantes = 0
   let salientes = 0
-  let auditadasTotal = 0
-  let atendidasAuditadas = 0
+  let entrantesAtendidas = 0
   let perdidasComerciales = 0
 
   for (const ll of llamadas) {
     const tipo = ll.tipo_llamada?.toUpperCase()
-    if (tipo === 'ENTRANTE') entrantes++
-    else salientes++
-
-    const esComercial = ll.fecha_llamada ? isHorarioComercial(ll.fecha_llamada) : false
     const atendida = ll.estado?.toUpperCase() === 'ATENDIDA'
+    const esComercial = ll.fecha_llamada ? isHorarioComercial(ll.fecha_llamada) : false
 
-    if (esComercial) {
-      auditadasTotal++
-      if (atendida) atendidasAuditadas++
-      else perdidasComerciales++
-    } else if (atendida) {
-      auditadasTotal++
-      atendidasAuditadas++
+    if (tipo === 'ENTRANTE') {
+      entrantes++
+      if (atendida) entrantesAtendidas++
+      if (!atendida && esComercial) perdidasComerciales++
+    } else {
+      salientes++
     }
   }
 
+  const puntosPositivos = entrantesAtendidas + salientes
+  const totalInteracciones = entrantes + salientes
   const eficiencia =
-    auditadasTotal > 0 ? Math.round((atendidasAuditadas / auditadasTotal) * 100) : 0
+    totalInteracciones > 0 ? Math.round((puntosPositivos / totalInteracciones) * 100) : 0
 
   return {
     total: llamadas.length,
     entrantes,
     salientes,
-    atendidas: atendidasAuditadas,
+    atendidas: entrantesAtendidas,
     eficiencia,
     perdidasComerciales,
   }
