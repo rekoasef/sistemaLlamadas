@@ -68,6 +68,7 @@ export function calcularKPIs(llamadas: LlamadaConConcesionario[]): KPIStats {
   let entrantes = 0
   let salientes = 0
   let entrantesAtendidas = 0
+  let entrantesPerdidas = 0
   let perdidasComerciales = 0
 
   for (const ll of llamadas) {
@@ -78,7 +79,10 @@ export function calcularKPIs(llamadas: LlamadaConConcesionario[]): KPIStats {
     if (tipo === 'ENTRANTE') {
       entrantes++
       if (atendida) entrantesAtendidas++
-      if (!atendida && esComercial) perdidasComerciales++
+      else {
+        entrantesPerdidas++
+        if (esComercial) perdidasComerciales++
+      }
     } else {
       salientes++
     }
@@ -95,6 +99,7 @@ export function calcularKPIs(llamadas: LlamadaConConcesionario[]): KPIStats {
     salientes,
     atendidas: entrantesAtendidas,
     eficiencia,
+    entrantesPerdidas,
     perdidasComerciales,
   }
 }
