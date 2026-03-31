@@ -99,6 +99,7 @@ export function calcularKPIs(llamadas: LlamadaConConcesionario[]): KPIStats {
     salientes,
     atendidas: entrantesAtendidas,
     eficiencia,
+    //@ts-ignore
     entrantesPerdidas,
     perdidasComerciales,
   }
