@@ -11,9 +11,11 @@ import {
 import { fetchReportes, insertReporte, deleteReporte } from '@/services/reportes.service'
 import { fetchLlamadasByRange } from '@/services/llamadas.service'
 import { calcularKPIs, generarResumenEjecutivo, calcularFugasPorFranja, UMBRAL_EFICIENCIA } from '@/lib/kpi'
-import { exportarReportePDF } from '@/lib/pdf'
+import { calcularTopConcesionarios } from '@/lib/wallboard'
+import { exportarReportePDF, exportarReportePDFComoBase64 } from '@/lib/pdf'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { SkeletonReporteCard } from '@/components/ui/SkeletonCard'
+import { DESTINATARIOS_DEFAULT } from '@/lib/email-config'
 import type { Reporte, FranjaPerdidas, ReporteMetricas } from '@/types/domain'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -211,6 +213,9 @@ const DocumentViewer = memo(function DocumentViewer({
   onClose: () => void
   onExport: (r: Reporte) => void
 }) {
+  const [sending, setSending] = useState(false)
+  const [sendStatus, setSendStatus] = useState<'idle' | 'ok' | 'error'>('idle')
+
   const m = reporte.metricas
   const eficiencia = m?.eficiencia ?? 0
   const isOptimal = eficiencia >= UMBRAL_EFICIENCIA
@@ -219,11 +224,42 @@ const DocumentViewer = memo(function DocumentViewer({
     ? Math.round((perdidas / (m?.total ?? 1)) * 100)
     : 0
 
+  // Legacy reports (auto-generated before v2.2) may not have entrantes/salientes
+  const hasBreakdown = (m?.entrantes ?? 0) + (m?.salientes ?? 0) > 0
+
   const franjas = useMemo(() => (m as ReporteMetricas | null)?.franjas ?? [], [m])
   const franjasCritica = useMemo(() => {
     if (!franjas.length) return null
     return [...franjas].filter(f => f.total > 0).sort((a, b) => b.porcentaje - a.porcentaje)[0] ?? null
   }, [franjas])
+
+  const topConces = useMemo(() => (m as ReporteMetricas | null)?.topConcesionarios ?? [], [m])
+
+  const handleEnviar = useCallback(async () => {
+    setSending(true)
+    setSendStatus('idle')
+    try {
+      const pdfBase64 = exportarReportePDFComoBase64(reporte)
+      const periodo = `${new Date(reporte.rango_inicio + 'T12:00:00').toLocaleDateString('es-AR')} — ${new Date(reporte.rango_fin + 'T12:00:00').toLocaleDateString('es-AR')}`
+      const res = await fetch('/api/send-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          titulo: reporte.titulo,
+          periodo,
+          resumen: reporte.resumen_escrito ?? '',
+          pdfBase64,
+          destinatarios: DESTINATARIOS_DEFAULT,
+        }),
+      })
+      if (!res.ok) throw new Error('Error en el servidor')
+      setSendStatus('ok')
+    } catch {
+      setSendStatus('error')
+    } finally {
+      setSending(false)
+    }
+  }, [reporte])
 
   return (
     <div
@@ -363,7 +399,7 @@ const DocumentViewer = memo(function DocumentViewer({
                 <MetricTile
                   icon={<ArrowDownLeft size={18} />}
                   label="Entrantes"
-                  value={m?.entrantes ?? 0}
+                  value={hasBreakdown ? (m?.entrantes ?? 0) : 'N/D'}
                   color="text-blue-400"
                   bg="bg-blue-500/5"
                   border="border-blue-500/20"
@@ -371,7 +407,7 @@ const DocumentViewer = memo(function DocumentViewer({
                 <MetricTile
                   icon={<ArrowUpRight size={18} />}
                   label="Salientes"
-                  value={m?.salientes ?? 0}
+                  value={hasBreakdown ? (m?.salientes ?? 0) : 'N/D'}
                   color="text-purple-400"
                   bg="bg-purple-500/5"
                   border="border-purple-500/20"
@@ -491,7 +527,40 @@ const DocumentViewer = memo(function DocumentViewer({
               </section>
             )}
 
-            {/* Section 4 — Executive Summary (zero <pre>) */}
+            {/* Section 4 — Top 10 Concesionarios (conditional) */}
+            {topConces.length > 0 && (
+              <section>
+                <SectionLabel icon={<TrendingUp size={13} />} label="Top 10 Concesionarios por Actividad" />
+                <div className="mt-5 bg-black/30 border border-neutral-800/40 rounded-3xl p-6 space-y-1">
+                  {topConces.map((item, i) => {
+                    const maxT = topConces[0]?.total ?? 1
+                    const pct = Math.round((item.total / maxT) * 100)
+                    const isTop3 = i < 3
+                    return (
+                      <div key={item.nombre} className="flex items-center gap-4 py-2 border-b border-neutral-800/40 last:border-0">
+                        <span className={`text-xs font-black w-5 text-right shrink-0 ${isTop3 ? 'text-red-500' : 'text-neutral-700'}`}>
+                          {i + 1}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white font-bold text-xs uppercase tracking-wide truncate mb-1">{item.nombre}</p>
+                          <div className="h-1.5 bg-neutral-800 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-700 ${isTop3 ? 'bg-red-600' : 'bg-neutral-600'}`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                        <span className={`text-sm font-black italic shrink-0 w-8 text-right ${isTop3 ? 'text-red-500' : 'text-neutral-400'}`}>
+                          {item.total}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </section>
+            )}
+
+            {/* Section 5 — Executive Summary (zero <pre>) */}
             <section>
               <SectionLabel icon={<FileText size={13} />} label="Resumen Ejecutivo" />
               <div className="mt-5 bg-black/30 border border-neutral-800/40 rounded-3xl p-8 relative overflow-hidden">
@@ -503,18 +572,39 @@ const DocumentViewer = memo(function DocumentViewer({
             </section>
 
             {/* Actions */}
-            <div className="flex gap-4 pt-2 border-t border-neutral-800/40">
-              <button
-                className="flex-1 py-5 bg-neutral-900 border border-neutral-800 text-neutral-400 rounded-2xl font-black uppercase text-[10px] italic flex items-center justify-center gap-3 hover:bg-neutral-800 hover:text-white transition-all"
-              >
-                <Mail size={16} /> Enviar a Gerencia
-              </button>
-              <button
-                onClick={() => onExport(reporte)}
-                className="flex-1 py-5 bg-red-600 text-white rounded-2xl font-black uppercase text-[10px] italic flex items-center justify-center gap-3 hover:bg-red-700 transition-all shadow-[0_0_20px_rgba(220,38,38,0.2)] active:scale-95"
-              >
-                <Download size={16} /> Exportar PDF Oficial
-              </button>
+            <div className="flex flex-col gap-3 pt-2 border-t border-neutral-800/40">
+              {sendStatus === 'ok' && (
+                <div className="flex items-center gap-3 bg-green-600/10 border border-green-600/30 rounded-2xl px-5 py-3">
+                  <CheckCircle2 size={14} className="text-green-500 shrink-0" />
+                  <p className="text-green-400 text-[10px] font-black uppercase tracking-wide">
+                    Informe enviado correctamente a todos los destinatarios
+                  </p>
+                </div>
+              )}
+              {sendStatus === 'error' && (
+                <div className="flex items-center gap-3 bg-red-600/10 border border-red-600/30 rounded-2xl px-5 py-3">
+                  <AlertTriangle size={14} className="text-red-500 shrink-0" />
+                  <p className="text-red-400 text-[10px] font-black uppercase tracking-wide">
+                    Error al enviar el correo. Verificá la configuración.
+                  </p>
+                </div>
+              )}
+              <div className="flex gap-4">
+                <button
+                  onClick={handleEnviar}
+                  disabled={sending}
+                  className="flex-1 py-5 bg-neutral-900 border border-neutral-800 text-neutral-400 rounded-2xl font-black uppercase text-[10px] italic flex items-center justify-center gap-3 hover:bg-neutral-800 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {sending ? <Loader2 size={16} className="animate-spin" /> : <Mail size={16} />}
+                  {sending ? 'Enviando...' : 'Enviar a Gerencia'}
+                </button>
+                <button
+                  onClick={() => onExport(reporte)}
+                  className="flex-1 py-5 bg-red-600 text-white rounded-2xl font-black uppercase text-[10px] italic flex items-center justify-center gap-3 hover:bg-red-700 transition-all shadow-[0_0_20px_rgba(220,38,38,0.2)] active:scale-95"
+                >
+                  <Download size={16} /> Exportar PDF Oficial
+                </button>
+              </div>
             </div>
 
           </div>
@@ -692,6 +782,7 @@ export default function InformesPage() {
       const llamadas = await fetchLlamadasByRange(fechaInicio, fechaFin)
       const kpis = calcularKPIs(llamadas)
       const franjas = calcularFugasPorFranja(llamadas)
+      const topConcesionarios = calcularTopConcesionarios(llamadas, 10)
       const resumen = generarResumenEjecutivo(kpis, fechaInicio, fechaFin, franjas)
 
       await insertReporte({
@@ -705,6 +796,7 @@ export default function InformesPage() {
           atendidas: kpis.atendidas,
           eficiencia: kpis.eficiencia,
           franjas,
+          topConcesionarios,
         } as unknown as import('@/types/supabase').Json,
         resumen_escrito: resumen,
         tipo: 'MANUAL',

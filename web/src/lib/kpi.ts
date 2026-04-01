@@ -35,6 +35,16 @@ export function isHorarioComercial(fecha: string): boolean {
 }
 
 /**
+ * Returns true if the call tipo_llamada corresponds to an incoming call.
+ * Handles all common PBX output formats defensively.
+ */
+export function esLlamadaEntrante(tipo: string | null | undefined): boolean {
+  if (!tipo) return false
+  const t = tipo.toUpperCase().trim()
+  return t === 'ENTRANTE' || t === 'INBOUND' || t === 'IN' || t === 'INCOMING' || t === 'E'
+}
+
+/**
  * Format duration in seconds to MM:SS display string.
  * Returns '00:00' for null/zero to avoid empty cells in the activity table.
  */
@@ -72,11 +82,10 @@ export function calcularKPIs(llamadas: LlamadaConConcesionario[]): KPIStats {
   let perdidasComerciales = 0
 
   for (const ll of llamadas) {
-    const tipo = ll.tipo_llamada?.toUpperCase()
     const atendida = ll.estado?.toUpperCase() === 'ATENDIDA'
     const esComercial = ll.fecha_llamada ? isHorarioComercial(ll.fecha_llamada) : false
 
-    if (tipo === 'ENTRANTE') {
+    if (esLlamadaEntrante(ll.tipo_llamada)) {
       entrantes++
       if (atendida) entrantesAtendidas++
       else {

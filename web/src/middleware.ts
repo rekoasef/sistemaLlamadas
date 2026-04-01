@@ -58,9 +58,11 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
   const isLoginPage = pathname === '/login'
+  // API routes used by client-side logic (email sending) are exempted
+  const isApiRoute = pathname.startsWith('/api/')
 
   // ── Guard: unauthenticated → /login ──────────────────────────────────────
-  if (!user && !isLoginPage) {
+  if (!user && !isLoginPage && !isApiRoute) {
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('redirectTo', pathname)
     return NextResponse.redirect(loginUrl)

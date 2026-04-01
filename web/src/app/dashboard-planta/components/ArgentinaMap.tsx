@@ -124,13 +124,19 @@ interface MapCanvasProps {
   variant: 'mini' | 'full'
   hoveredPin: ConcesionarioPin | null
   onHoverPin: (pin: ConcesionarioPin | null) => void
+  /** Override projection scale (default: 870 for full, 420 for mini) */
+  mapScale?: number
+  /** Override projection center [lon, lat] (default: [-65, -38]) */
+  mapCenter?: [number, number]
 }
 
 export function MapCanvas({
   pins, callsByProvince, maxCalls, maxPinCalls,
   variant, hoveredPin, onHoverPin,
+  mapScale, mapCenter,
 }: MapCanvasProps) {
-  const scale = variant === 'full' ? 870 : 420
+  const scale = mapScale ?? (variant === 'full' ? 870 : 420)
+  const center = mapCenter ?? [-65, -38]
   const minR = variant === 'full' ? 5 : 2
   const maxR = variant === 'full' ? 18 : 7
   const getR = (total: number) =>
@@ -139,7 +145,7 @@ export function MapCanvas({
   return (
     <ComposableMap
       projection="geoMercator"
-      projectionConfig={{ center: [-65, -38], scale }}
+      projectionConfig={{ center, scale }}
       style={{ width: '100%', height: '100%' }}
     >
       <Geographies geography={GEO_URL}>
@@ -173,14 +179,40 @@ export function MapCanvas({
           <Marker
             key={pin.id}
             coordinates={[pin.lon, pin.lat]}
-            onMouseEnter={() => onHoverPin(pin)}
-            onMouseLeave={() => onHoverPin(null)}
           >
-            {isHov && <circle r={r + 5} fill="none" stroke={color} strokeWidth={1.5} opacity={0.5} />}
-            <circle r={r} fill={color} stroke="#000000aa" strokeWidth={0.8} style={{ cursor: 'pointer' }} />
+            {/* Decorative ring — pointer-events:none to avoid triggering leave/enter */}
+            {isHov && (
+              <circle
+                r={r + 6}
+                fill="none"
+                stroke={color}
+                strokeWidth={1.5}
+                opacity={0.45}
+                style={{ pointerEvents: 'none' }}
+              />
+            )}
+            {/* Invisible hit area — larger target, captures mouseenter/mouseleave */}
+            <circle
+              r={r + 8}
+              fill="transparent"
+              style={{ cursor: 'pointer' }}
+              onMouseEnter={() => onHoverPin(pin)}
+              onMouseLeave={() => onHoverPin(null)}
+            />
+            {/* Visible pin circle — pointer-events:none so events go to hit area */}
+            <circle
+              r={r}
+              fill={color}
+              stroke="#000000aa"
+              strokeWidth={0.8}
+              style={{ pointerEvents: 'none' }}
+            />
             {variant === 'full' && pin.total >= 3 && (
-              <text y={-(r + 3)} textAnchor="middle"
-                style={{ fontFamily: 'inherit', fontSize: '7px', fontWeight: 900, fill: '#ffffff99', pointerEvents: 'none', userSelect: 'none' }}>
+              <text
+                y={-(r + 4)}
+                textAnchor="middle"
+                style={{ fontFamily: 'inherit', fontSize: '7px', fontWeight: 900, fill: '#ffffff99', pointerEvents: 'none', userSelect: 'none' }}
+              >
                 {pin.nombre.length > 14 ? pin.nombre.slice(0, 13) + '…' : pin.nombre}
               </text>
             )}

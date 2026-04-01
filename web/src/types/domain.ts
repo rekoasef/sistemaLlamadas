@@ -104,6 +104,8 @@ export interface ReporteMetricas {
   eficiencia: number
   /** Granular missed-call breakdown by commercial time slot (optional, added in v2.1) */
   franjas?: FranjaPerdidas[]
+  /** Top 10 dealerships by incoming call volume (optional, added in v2.2) */
+  topConcesionarios?: { nombre: string; total: number }[]
 }
 
 /** Discriminated union for report origin. */

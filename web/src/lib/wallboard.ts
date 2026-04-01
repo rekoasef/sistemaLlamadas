@@ -1,4 +1,5 @@
 import type { LlamadaConConcesionario, AliasMap } from '@/types/domain'
+import { esLlamadaEntrante } from '@/lib/kpi'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Wallboard-specific domain types
@@ -87,8 +88,8 @@ export function calcularEficienciaFranjas(
       const h = new Date(ll.fecha_llamada).getHours()
       return h >= inicio && h < fin
     })
-    const entrantes = enFranja.filter((ll) => ll.tipo_llamada?.toUpperCase() === 'ENTRANTE')
-    const salientes = enFranja.filter((ll) => ll.tipo_llamada?.toUpperCase() !== 'ENTRANTE')
+    const entrantes = enFranja.filter((ll) => esLlamadaEntrante(ll.tipo_llamada))
+    const salientes = enFranja.filter((ll) => !esLlamadaEntrante(ll.tipo_llamada))
     const entrantesAtendidas = entrantes.filter(
       (ll) => ll.estado?.toUpperCase() === 'ATENDIDA'
     ).length
@@ -123,7 +124,7 @@ export function calcularRankingTerminales(
     const id = ll.dispositivo_id ?? 'S/D'
     if (!map.has(id)) map.set(id, { entrantes: 0, entrantesAtendidas: 0, salientes: 0 })
     const t = map.get(id)!
-    if (ll.tipo_llamada?.toUpperCase() === 'ENTRANTE') {
+    if (esLlamadaEntrante(ll.tipo_llamada)) {
       t.entrantes++
       if (ll.estado?.toUpperCase() === 'ATENDIDA') t.entrantesAtendidas++
     } else {
@@ -164,7 +165,7 @@ export function calcularTopConcesionarios(
   const map = new Map<string, number>()
 
   for (const ll of llamadas) {
-    if (ll.tipo_llamada?.toUpperCase() !== 'ENTRANTE') continue
+    if (!esLlamadaEntrante(ll.tipo_llamada)) continue
     const nombre = ll.concesionarios?.nombre ?? 'SIN VINCULAR'
     map.set(nombre, (map.get(nombre) ?? 0) + 1)
   }
