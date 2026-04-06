@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   LogOut,
   Loader2,
+  X,
 } from 'lucide-react'
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser'
 
@@ -20,6 +21,11 @@ interface NavItem {
   name: string
   icon: React.ReactNode
   path: string
+}
+
+interface SidebarProps {
+  /** Called when user taps a nav link or the close button on mobile. */
+  onClose?: () => void
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -37,7 +43,7 @@ const NAV_ITEMS: NavItem[] = [
  * - Logout button signs out via Supabase Auth and redirects to /login.
  * - Sticky positioning keeps it visible during content scroll.
  */
-export default function Sidebar() {
+export default function Sidebar({ onClose }: SidebarProps = {}) {
   const pathname = usePathname()
   const router = useRouter()
   const [signingOut, setSigningOut] = useState(false)
@@ -53,14 +59,25 @@ export default function Sidebar() {
   return (
     <aside className="w-64 bg-black border-r border-neutral-800 flex flex-col h-screen sticky top-0 shrink-0">
       <div className="p-8 flex-1 overflow-y-auto">
-        {/* Logo */}
-        <div className="flex items-center gap-3 mb-12">
-          <div className="bg-red-600 p-2 rounded-lg text-white font-black italic shadow-[0_0_15px_rgba(220,38,38,0.5)]">
-            CT
+        {/* Logo + optional close button (mobile) */}
+        <div className="flex items-center justify-between mb-12">
+          <div className="flex items-center gap-3">
+            <div className="bg-red-600 p-2 rounded-lg text-white font-black italic shadow-[0_0_15px_rgba(220,38,38,0.5)]">
+              CT
+            </div>
+            <h2 className="text-white font-black italic tracking-tighter uppercase text-xl">
+              Cruci <span className="text-red-600">Track</span>
+            </h2>
           </div>
-          <h2 className="text-white font-black italic tracking-tighter uppercase text-xl">
-            Cruci <span className="text-red-600">Track</span>
-          </h2>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl text-neutral-500 hover:bg-neutral-900 hover:text-white transition-colors"
+              aria-label="Cerrar menú"
+            >
+              <X size={18} />
+            </button>
+          )}
         </div>
 
         {/* Navigation */}
@@ -71,6 +88,7 @@ export default function Sidebar() {
               <Link
                 key={item.path}
                 href={item.path}
+                onClick={onClose}
                 className={`flex items-center gap-4 px-4 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest italic transition-all ${
                   isActive
                     ? 'bg-red-600 text-white shadow-lg shadow-red-600/20'
