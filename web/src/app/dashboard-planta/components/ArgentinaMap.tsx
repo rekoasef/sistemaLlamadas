@@ -1,98 +1,50 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import React, { useMemo, memo, useCallback } from 'react'
 import { ComposableMap, Geographies, Geography, Marker } from 'react-simple-maps'
-import { Maximize2, Activity, MapPin } from 'lucide-react'
-import Link from 'next/link'
 import type { LlamadaConConcesionario } from '@/types/domain'
-
-// ─────────────────────────────────────────────────────────────────────────────
-// GeoJSON served from public/ — Argentina provinces (IGN, 24 features)
-// ─────────────────────────────────────────────────────────────────────────────
-const GEO_URL = '/argentina-provinces.json'
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Normalize: strip accents + uppercase for province key matching
-// ─────────────────────────────────────────────────────────────────────────────
-export function normalizeText(str: string): string {
-  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim()
-}
-
-const PROVINCE_ALIASES: Record<string, string> = {
-  'CABA': 'CIUDAD AUTONOMA DE BUENOS AIRES',
-  'CAPITAL FEDERAL': 'CIUDAD AUTONOMA DE BUENOS AIRES',
-  'CIUDAD DE BUENOS AIRES': 'CIUDAD AUTONOMA DE BUENOS AIRES',
-  'TIERRA DEL FUEGO': 'TIERRA DEL FUEGO, ANTARTIDA E ISLAS DEL ATLANTICO SUR',
-  'TDF': 'TIERRA DEL FUEGO, ANTARTIDA E ISLAS DEL ATLANTICO SUR',
-}
-
-export function resolveProvince(raw: string): string {
-  const norm = normalizeText(raw)
-  return PROVINCE_ALIASES[norm] ?? norm
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Color interpolation: #ffffb2 → #fd8d3c → #bd0026
-// ─────────────────────────────────────────────────────────────────────────────
-function hexToRgb(hex: string): [number, number, number] {
-  return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)]
-}
-
-const COLOR_STOPS: [number, [number, number, number]][] = [
-  [0.0, hexToRgb('#ffffb2')],
-  [0.5, hexToRgb('#fd8d3c')],
-  [1.0, hexToRgb('#bd0026')],
-]
-
-export function callsToColor(count: number, max: number): string {
-  if (count === 0 || max === 0) return '#1c1c1c'
-  const t = Math.min(count / max, 1)
-  let lo = COLOR_STOPS[0], hi = COLOR_STOPS[COLOR_STOPS.length - 1]
-  for (let i = 0; i < COLOR_STOPS.length - 1; i++) {
-    if (t >= COLOR_STOPS[i][0] && t <= COLOR_STOPS[i + 1][0]) { lo = COLOR_STOPS[i]; hi = COLOR_STOPS[i + 1]; break }
-  }
-  const s = hi[0] - lo[0], st = s > 0 ? (t - lo[0]) / s : 0
-  return `rgb(${Math.round(lo[1][0] + (hi[1][0] - lo[1][0]) * st)},${Math.round(lo[1][1] + (hi[1][1] - lo[1][1]) * st)},${Math.round(lo[1][2] + (hi[1][2] - lo[1][2]) * st)})`
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
+
 export interface ConcesionarioPin {
   id: string
   nombre: string
-  lat: number
-  lon: number
-  total: number
-  atendidas: number
   ciudad: string
   provincia: string
+  lat: number
+  lng: number
+  total: number
+  atendidas: number
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Shared data hooks — exported so the /mapa page can reuse them
+// Hooks
 // ─────────────────────────────────────────────────────────────────────────────
+
 export function usePins(llamadas: LlamadaConConcesionario[]): ConcesionarioPin[] {
   return useMemo(() => {
     const map = new Map<string, ConcesionarioPin>()
     for (const l of llamadas) {
-      if (!l.concesionario_id || !l.concesionarios) continue
-      const c = l.concesionarios as any
-      if (!c.latitud || !c.longitud) continue
-      const ex = map.get(l.concesionario_id)
-      if (ex) {
-        ex.total++
-        if (l.estado === 'ATENDIDA') ex.atendidas++
-      } else {
-        map.set(l.concesionario_id, {
-          id: l.concesionario_id,
-          nombre: c.nombre ?? '?',
-          lat: c.latitud, lon: c.longitud,
-          total: 1,
-          atendidas: l.estado === 'ATENDIDA' ? 1 : 0,
-          ciudad: c.ciudad ?? '', provincia: c.provincia ?? '',
+      const c = l.concesionarios
+      if (!c || c.latitud == null || c.longitud == null) continue
+      const key = c.nombre
+      if (!map.has(key)) {
+        map.set(key, {
+          id: key,
+          nombre: c.nombre,
+          ciudad: c.ciudad ?? '',
+          provincia: c.provincia ?? '',
+          lat: c.latitud,
+          lng: c.longitud,
+          total: 0,
+          atendidas: 0,
         })
       }
+      const pin = map.get(key)!
+      pin.total++
+      if (l.estado?.toUpperCase() === 'ATENDIDA') pin.atendidas++
     }
     return Array.from(map.values()).sort((a, b) => b.total - a.total)
   }, [llamadas])
@@ -102,77 +54,107 @@ export function useCallsByProvince(llamadas: LlamadaConConcesionario[]): Record<
   return useMemo(() => {
     const counts: Record<string, number> = {}
     for (const l of llamadas) {
-      const rawProv = (l.concesionarios as any)?.provincia
-      if (rawProv && typeof rawProv === 'string') {
-        const key = resolveProvince(rawProv)
-        counts[key] = (counts[key] ?? 0) + 1
-      }
+      const prov = l.concesionarios?.provincia
+      if (!prov) continue
+      const key = normalizeStr(prov)
+      counts[key] = (counts[key] ?? 0) + 1
     }
     return counts
   }, [llamadas])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MapCanvas — pure SVG map, used by both panel and page
+// Utilities
 // ─────────────────────────────────────────────────────────────────────────────
+
+function normalizeStr(str: string): string {
+  return str.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+}
+
+/** Maps a call count to a heat color in the range #ffffb2 → #fd8d3c → #bd0026. */
+export function callsToColor(count: number, max: number): string {
+  if (count === 0 || max === 0) return '#171717'
+  const t = count / max
+  if (t < 0.5) {
+    const t2 = t * 2
+    const r = Math.round(255 + (253 - 255) * t2)
+    const g = Math.round(255 + (141 - 255) * t2)
+    const b = Math.round(178 + (60  - 178) * t2)
+    return `rgb(${r},${g},${b})`
+  }
+  const t2 = (t - 0.5) * 2
+  const r = Math.round(253 + (189 - 253) * t2)
+  const g = Math.round(141 + (0   - 141) * t2)
+  const b = Math.round(60  + (38  -  60) * t2)
+  return `rgb(${r},${g},${b})`
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────────────────────────────────────
+
+const GEO_URL =
+  'https://raw.githubusercontent.com/datasets/geo-boundaries-world/master/countries/ARG/provinces.json'
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MapCanvas
+// ─────────────────────────────────────────────────────────────────────────────
+
 interface MapCanvasProps {
   pins: ConcesionarioPin[]
   callsByProvince: Record<string, number>
   maxCalls: number
   maxPinCalls: number
-  /** 'mini' = smaller dots, grey provinces. 'full' = larger dots, choropleth bg */
-  variant: 'mini' | 'full'
+  variant?: 'full' | 'mini'
   hoveredPin: ConcesionarioPin | null
   onHoverPin: (pin: ConcesionarioPin | null) => void
-  /** Override projection scale (default: 870 for full, 420 for mini) */
   mapScale?: number
-  /** Override projection center [lon, lat] (default: [-65, -38]) */
   mapCenter?: [number, number]
 }
 
-export function MapCanvas({
-  pins, callsByProvince, maxCalls, maxPinCalls,
-  variant, hoveredPin, onHoverPin,
-  mapScale, mapCenter,
+export const MapCanvas = memo(function MapCanvas({
+  pins,
+  callsByProvince,
+  maxCalls,
+  maxPinCalls,
+  variant = 'full',
+  hoveredPin,
+  onHoverPin,
+  mapScale = 750,
+  mapCenter = [-63, -40],
 }: MapCanvasProps) {
-  const scale = mapScale ?? (variant === 'full' ? 870 : 420)
-  const center = mapCenter ?? [-65, -38]
-  const minR = variant === 'full' ? 5 : 2
-  const maxR = variant === 'full' ? 18 : 7
-  const getR = (total: number) =>
-    maxPinCalls <= 1 ? minR : minR + (total / maxPinCalls) ** 0.6 * (maxR - minR)
+  const pinRadius = useCallback(
+    (total: number) => {
+      const minR = variant === 'full' ? 4 : 2
+      const maxR = variant === 'full' ? 16 : 8
+      return minR + (total / Math.max(maxPinCalls, 1)) * (maxR - minR)
+    },
+    [maxPinCalls, variant],
+  )
 
   return (
     <ComposableMap
       projection="geoMercator"
-      projectionConfig={{ center, scale }}
+      projectionConfig={{ scale: mapScale, center: mapCenter }}
       style={{ width: '100%', height: '100%' }}
     >
       <Geographies geography={GEO_URL}>
-        {({ geographies }: { geographies: any[] }) =>
+        {({ geographies }) =>
           geographies.map((geo) => {
-            const key = resolveProvince(geo.properties?.nombre ?? '')
-            const count = callsByProvince[key] ?? 0
-            const hasData = count > 0
-            const fill = hasData
-              ? callsToColor(count, maxCalls) + (variant === 'full' ? 'cc' : '99')
-              : (variant === 'full' ? '#252525' : '#1e1e1e')
-            const stroke = variant === 'full' ? '#555555' : '#383838'
-            const strokeWidth = variant === 'full' ? 0.8 : 0.5
+            const provName = normalizeStr(
+              geo.properties.name || geo.properties.NAME_1 || '',
+            )
+            const count = callsByProvince[provName] ?? 0
             return (
               <Geography
                 key={geo.rsmKey}
                 geography={geo}
-                fill={fill}
-                stroke={stroke}
-                strokeWidth={strokeWidth}
+                fill={callsToColor(count, maxCalls)}
+                stroke="#262626"
+                strokeWidth={0.5}
                 style={{
                   default: { outline: 'none' },
-                  hover: {
-                    outline: 'none',
-                    fill: hasData ? callsToColor(count, maxCalls) : (variant === 'full' ? '#333333' : '#2a2a2a'),
-                    cursor: 'default',
-                  },
+                  hover:   { fill: '#444', outline: 'none', cursor: 'default' },
                   pressed: { outline: 'none' },
                 }}
               />
@@ -182,61 +164,35 @@ export function MapCanvas({
       </Geographies>
 
       {pins.map((pin) => {
-        const r = getR(pin.total)
-        const color = callsToColor(pin.total, maxPinCalls)
-        const isHov = hoveredPin?.id === pin.id
-
+        const r = pinRadius(pin.total)
+        const isHovered = hoveredPin?.id === pin.id
         return (
           <Marker
             key={pin.id}
-            coordinates={[pin.lon, pin.lat]}
+            coordinates={[pin.lng, pin.lat]}
+            onMouseEnter={() => onHoverPin(pin)}
+            onMouseLeave={() => onHoverPin(null)}
           >
-            {/* Decorative ring — pointer-events:none to avoid triggering leave/enter */}
-            {isHov && (
-              <circle
-                r={r + 6}
-                fill="none"
-                stroke={color}
-                strokeWidth={1.5}
-                opacity={0.45}
-                style={{ pointerEvents: 'none' }}
-              />
-            )}
-            {/* Invisible hit area — larger target, captures mouseenter/mouseleave */}
             <circle
-              r={r + 8}
-              fill="transparent"
-              style={{ cursor: 'pointer' }}
-              onMouseEnter={() => onHoverPin(pin)}
-              onMouseLeave={() => onHoverPin(null)}
+              r={isHovered ? r + 3 : r}
+              fill={isHovered ? '#ffffff' : '#fd8d3c'}
+              fillOpacity={isHovered ? 0.95 : 0.8}
+              stroke={isHovered ? '#ffffff' : '#fd8d3c'}
+              strokeWidth={isHovered ? 2 : 1}
+              strokeOpacity={0.5}
+              style={{ cursor: 'pointer', transition: 'r 0.2s, fill 0.2s' }}
             />
-            {/* Visible pin circle — pointer-events:none so events go to hit area */}
-            <circle
-              r={r}
-              fill={color}
-              stroke="#000000aa"
-              strokeWidth={0.8}
-              style={{ pointerEvents: 'none' }}
-            />
-            {variant === 'full' && pin.total >= 3 && (
-              <text
-                y={-(r + 4)}
-                textAnchor="middle"
-                style={{ fontFamily: 'inherit', fontSize: '7px', fontWeight: 900, fill: '#ffffff99', pointerEvents: 'none', userSelect: 'none' }}
-              >
-                {pin.nombre.length > 14 ? pin.nombre.slice(0, 13) + '…' : pin.nombre}
-              </text>
-            )}
           </Marker>
         )
       })}
     </ComposableMap>
   )
-}
+})
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Ranking sidebar — used in the /mapa page
+// RankingSidebar
 // ─────────────────────────────────────────────────────────────────────────────
+
 interface RankingSidebarProps {
   pins: ConcesionarioPin[]
   maxPinCalls: number
@@ -244,135 +200,65 @@ interface RankingSidebarProps {
   onHoverPin: (pin: ConcesionarioPin | null) => void
 }
 
-export function RankingSidebar({ pins, maxPinCalls, hoveredPin, onHoverPin }: RankingSidebarProps) {
+export const RankingSidebar = memo(function RankingSidebar({
+  pins,
+  maxPinCalls,
+  hoveredPin,
+  onHoverPin,
+}: RankingSidebarProps) {
+  const top = pins.slice(0, 20)
+
   return (
-    <div className="w-72 shrink-0 border-l border-neutral-800 flex flex-col overflow-hidden">
-      <div className="px-6 py-5 border-b border-neutral-800 shrink-0">
-        <div className="flex items-center gap-2">
-          <Activity size={14} className="text-red-600" />
-          <span className="text-white font-black italic uppercase text-xs tracking-widest">Ranking Sucursales</span>
-        </div>
+    <aside className="w-64 shrink-0 border-l border-neutral-800 bg-black/40 flex flex-col">
+      <div className="px-5 py-4 border-b border-neutral-800 shrink-0">
+        <p className="text-neutral-500 text-[8px] font-black uppercase tracking-widest">
+          Ranking por llamadas
+        </p>
       </div>
-
-      <div className="flex-1 overflow-y-auto">
-        {pins.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full gap-3 px-6">
-            <MapPin size={32} className="text-neutral-700" />
-            <p className="text-neutral-600 text-xs font-black uppercase text-center">
-              Asigná ciudades a los concesionarios para ver los puntos en el mapa
-            </p>
-          </div>
-        ) : (
-          <div className="px-4 py-3 space-y-2">
-            {pins.map((pin, i) => {
-              const isHov = hoveredPin?.id === pin.id
-              const efic = pin.total > 0 ? Math.round((pin.atendidas / pin.total) * 100) : 0
-              const barW = maxPinCalls > 0 ? Math.round((pin.total / maxPinCalls) * 100) : 0
-
-              return (
-                <div
-                  key={pin.id}
-                  onMouseEnter={() => onHoverPin(pin)}
-                  onMouseLeave={() => onHoverPin(null)}
-                  className={`flex flex-col gap-1.5 p-3 rounded-xl cursor-default transition-colors ${
-                    isHov ? 'bg-red-600/10 border border-red-600/30' : 'border border-transparent hover:bg-neutral-800/40'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-neutral-700 text-[9px] font-black w-4 text-right shrink-0">{i + 1}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-white font-black italic uppercase text-xs truncate leading-none">{pin.nombre}</p>
-                      <p className="text-neutral-600 text-[8px] font-black truncate mt-0.5">
-                        {pin.ciudad}{pin.provincia ? `, ${pin.provincia}` : ''}
-                      </p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <span className="text-white font-black italic text-base">{pin.total}</span>
-                      <span className={`block text-[8px] font-black ${efic >= 80 ? 'text-green-400' : efic >= 60 ? 'text-yellow-400' : 'text-red-500'}`}>
-                        {efic}%
-                      </span>
-                    </div>
-                  </div>
-                  <div className="h-1 bg-neutral-800 rounded-full overflow-hidden ml-6">
-                    <div className="h-full rounded-full transition-all duration-700"
-                      style={{ width: `${barW}%`, background: callsToColor(pin.total, maxPinCalls) }} />
-                  </div>
+      <div className="flex-1 overflow-y-auto space-y-1 p-3">
+        {top.map((pin, i) => {
+          const isHovered = hoveredPin?.id === pin.id
+          const pct = Math.round((pin.total / Math.max(maxPinCalls, 1)) * 100)
+          return (
+            <div
+              key={pin.id}
+              onMouseEnter={() => onHoverPin(pin)}
+              onMouseLeave={() => onHoverPin(null)}
+              className={`p-2.5 rounded-xl cursor-pointer transition-all duration-150 border ${
+                isHovered
+                  ? 'bg-neutral-800 border-neutral-600'
+                  : 'border-transparent hover:bg-neutral-900'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-neutral-600 text-[9px] font-black w-4 shrink-0">
+                    {i + 1}
+                  </span>
+                  <span className="text-white text-[10px] font-black uppercase truncate">
+                    {pin.nombre}
+                  </span>
                 </div>
-              )
-            })}
-          </div>
-        )}
+                <span className="text-white font-black text-sm italic shrink-0 ml-2">
+                  {pin.total}
+                </span>
+              </div>
+              <div className="h-1 bg-neutral-800 rounded-full overflow-hidden ml-6">
+                <div
+                  className="h-full bg-red-600 rounded-full transition-all duration-500"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            </div>
+          )
+        })}
       </div>
-
-      {pins.length > 0 && (
-        <div className="shrink-0 border-t border-neutral-800 px-6 py-4 flex justify-between">
-          <div className="flex flex-col">
-            <span className="text-white font-black italic text-xl">{pins.length}</span>
-            <span className="text-neutral-600 text-[8px] font-black uppercase">Sucursales</span>
-          </div>
-          <div className="flex flex-col items-end">
-            <span className="text-white font-black italic text-xl">{pins.reduce((s, p) => s + p.total, 0)}</span>
-            <span className="text-neutral-600 text-[8px] font-black uppercase">Llamadas</span>
-          </div>
-        </div>
-      )}
-    </div>
+    </aside>
   )
-}
+})
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ArgentinaMap — panel (mini) variant used in the wallboard
+// Default export
 // ─────────────────────────────────────────────────────────────────────────────
-interface Props {
-  llamadas: LlamadaConConcesionario[]
-}
 
-export default function ArgentinaMap({ llamadas }: Props) {
-  const [hoveredPin, setHoveredPin] = useState<ConcesionarioPin | null>(null)
-
-  const pins = usePins(llamadas)
-  const callsByProvince = useCallsByProvince(llamadas)
-  const maxCalls = useMemo(() => Math.max(...Object.values(callsByProvince), 1), [callsByProvince])
-  const maxPinCalls = useMemo(() => Math.max(...pins.map((p) => p.total), 1), [pins])
-
-  const hasPins = pins.length > 0
-
-  return (
-    <div className="w-full h-full flex flex-col relative group">
-      {/* Link to full map page */}
-      <Link
-        href="/mapa"
-        className="absolute top-2 right-2 z-10 p-1.5 bg-neutral-900/80 border border-neutral-700 rounded-lg text-neutral-600 hover:text-white hover:border-red-600 transition-all opacity-0 group-hover:opacity-100"
-        title="Ver mapa completo"
-      >
-        <Maximize2 size={11} />
-      </Link>
-
-      <div className="flex-1 min-h-0">
-        <MapCanvas
-          pins={pins}
-          callsByProvince={callsByProvince}
-          maxCalls={maxCalls}
-          maxPinCalls={maxPinCalls}
-          variant="mini"
-          hoveredPin={hoveredPin}
-          onHoverPin={setHoveredPin}
-        />
-      </div>
-
-      {hasPins ? (
-        <div className="shrink-0 px-3 pb-2 flex items-center gap-2">
-          <span className="text-neutral-700 text-[7px] font-black uppercase">{pins.length} sucursales</span>
-          <div className="flex-1 h-1 rounded-full" style={{ background: 'linear-gradient(to right, #ffffb2, #fd8d3c, #bd0026)' }} />
-          <span className="text-neutral-700 text-[7px] font-black uppercase">{maxPinCalls} máx</span>
-        </div>
-      ) : (
-        <div className="shrink-0 pb-2 flex justify-center">
-          <span className="text-neutral-700 text-[8px] font-black uppercase tracking-widest">
-            Sin coordenadas cargadas
-          </span>
-        </div>
-      )}
-    </div>
-  )
-}
+export default MapCanvas
