@@ -357,27 +357,33 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Sección HOY */}
-                <div className={`border-t border-neutral-800 pt-4 transition-all duration-300 ${todayFlash ? 'bg-white/5 rounded-2xl px-3 pb-2' : ''}`}>
-                  <p className="text-[9px] text-neutral-500 font-black uppercase tracking-[0.25em] mb-3 italic">
-                    HOY
-                  </p>
+                <div className={`mt-4 rounded-2xl border p-4 transition-all duration-500 ${
+                  todayFlash
+                    ? 'bg-blue-500/10 border-blue-500/30'
+                    : 'bg-white/[0.03] border-white/[0.08]'
+                }`}>
+                  {/* Badge HOY */}
+                  <div className="inline-flex items-center gap-1.5 bg-white/10 border border-white/20 rounded-full px-2.5 py-1 mb-4">
+                    <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white">HOY</span>
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="flex items-center gap-2">
                       <ArrowDownLeft className="text-blue-500" size={16} />
                       <div>
-                        <p className={`text-lg font-black italic leading-none ${todayFlash ? 'text-white' : 'text-neutral-300'}`}>
+                        <p className={`text-xl font-black italic leading-none ${todayFlash ? 'text-white' : 'text-neutral-200'}`}>
                           {statsHoy.entrantes}
                         </p>
-                        <p className="text-[8px] text-neutral-600 font-black uppercase">Entrantes</p>
+                        <p className="text-[8px] text-neutral-500 font-black uppercase mt-0.5">Entrantes</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <ArrowUpRight className="text-green-500" size={16} />
                       <div>
-                        <p className={`text-lg font-black italic leading-none ${todayFlash ? 'text-white' : 'text-neutral-300'}`}>
+                        <p className={`text-xl font-black italic leading-none ${todayFlash ? 'text-white' : 'text-neutral-200'}`}>
                           {statsHoy.salientes}
                         </p>
-                        <p className="text-[8px] text-neutral-600 font-black uppercase">Salientes</p>
+                        <p className="text-[8px] text-neutral-500 font-black uppercase mt-0.5">Salientes</p>
                       </div>
                     </div>
                   </div>
@@ -413,28 +419,34 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Sección HOY */}
-                <div className={`border-t border-neutral-800 pt-4 transition-all duration-300 ${todayFlash ? 'bg-white/5 rounded-2xl px-3 pb-2' : ''}`}>
-                  <p className="text-[9px] text-neutral-500 font-black uppercase tracking-[0.25em] mb-3 italic">
-                    HOY
-                  </p>
-                  <div className="flex items-baseline gap-2 mb-2">
+                <div className={`mt-4 rounded-2xl border p-4 transition-all duration-500 ${
+                  todayFlash
+                    ? 'bg-green-500/10 border-green-500/30'
+                    : 'bg-white/[0.03] border-white/[0.08]'
+                }`}>
+                  {/* Badge HOY */}
+                  <div className="inline-flex items-center gap-1.5 bg-white/10 border border-white/20 rounded-full px-2.5 py-1 mb-4">
+                    <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white">HOY</span>
+                  </div>
+                  <div className="flex items-baseline gap-2 mb-3">
                     <span
-                      className={`text-2xl font-black italic tracking-tight leading-none transition-colors ${
+                      className={`text-3xl font-black italic tracking-tight leading-none transition-colors ${
                         statsHoy.eficiencia > stats.eficiencia
                           ? 'text-green-400'
                           : statsHoy.eficiencia < stats.eficiencia
                           ? 'text-red-500'
-                          : 'text-neutral-400'
+                          : 'text-neutral-300'
                       } ${todayFlash ? 'animate-pulse' : ''}`}
                     >
                       {statsHoy.eficiencia}%
                     </span>
-                    <span className="text-[9px] text-neutral-600 font-black uppercase italic tracking-widest">
+                    <span className="text-[9px] text-neutral-500 font-black uppercase tracking-widest">
                       actual
                     </span>
                   </div>
                   {/* Mini barra de hoy */}
-                  <div className="w-full bg-neutral-800/50 h-1 rounded-full overflow-hidden border border-white/5">
+                  <div className="w-full bg-neutral-800/50 h-1.5 rounded-full overflow-hidden border border-white/5">
                     <div
                       className={`h-full transition-all duration-700 ${
                         statsHoy.eficiencia > stats.eficiencia
@@ -470,16 +482,22 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Sección HOY */}
-                <div className={`border-t border-neutral-800 pt-4 transition-all duration-300 ${todayFlash ? 'bg-white/5 rounded-2xl px-3 pb-2' : ''}`}>
-                  <p className="text-[9px] text-neutral-500 font-black uppercase tracking-[0.25em] mb-3 italic">
-                    HOY
-                  </p>
+                <div className={`mt-4 rounded-2xl border p-4 transition-all duration-500 ${
+                  todayFlash
+                    ? 'bg-red-600/10 border-red-600/30'
+                    : 'bg-white/[0.03] border-white/[0.08]'
+                }`}>
+                  {/* Badge HOY */}
+                  <div className="inline-flex items-center gap-1.5 bg-white/10 border border-white/20 rounded-full px-2.5 py-1 mb-4">
+                    <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white">HOY</span>
+                  </div>
                   <div className="flex items-baseline gap-3">
-                    <span className={`text-2xl font-black italic tracking-tight leading-none text-red-500 ${todayFlash ? 'animate-pulse' : ''}`}>
+                    <span className={`text-3xl font-black italic tracking-tight leading-none text-red-500 ${todayFlash ? 'animate-pulse' : ''}`}>
                       {statsHoy.perdidasComerciales}
                     </span>
-                    <span className="text-[9px] text-neutral-600 font-black uppercase italic tracking-widest">
-                      perdidas hoy
+                    <span className="text-[9px] text-neutral-500 font-black uppercase tracking-widest">
+                      pérdidas
                     </span>
                   </div>
                 </div>

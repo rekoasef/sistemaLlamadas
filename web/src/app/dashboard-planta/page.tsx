@@ -107,7 +107,7 @@ interface KpiCardProps {
   progress?: number
   progressColor?: string
   flashKey: number
-  /** Value for the current day (shown as subtitle when range ≠ HOY) */
+  /** Value for the current day (shown as a live block when range ≠ HOY) */
   todayValue?: string | number
   rango: RangoWallboard
   /** Optional secondary footnote text shown at the bottom of the card */
@@ -135,43 +135,73 @@ const KpiCard = memo(function KpiCard({
   return (
     <div
       ref={divRef}
-      className={`flex-1 bg-neutral-900 border border-white/10 rounded-xl flex flex-col gap-2 min-w-0 transition-colors duration-300 ${flashing ? 'wb-flash' : ''}`}
-      style={{ padding: '20px' }}
+      className={`flex-1 relative overflow-hidden bg-gradient-to-br from-[#0e0e0e] to-[#1b1b1b] border rounded-2xl flex flex-col min-w-0 transition-all duration-300 ${
+        flashing ? 'wb-flash border-white/20' : 'border-white/[0.08]'
+      }`}
+      style={{ padding: '18px 20px' }}
     >
-      {/* Top row: label (left) + icon (right) */}
-      <div className="flex items-center justify-between">
-        <span className="text-[9px] font-black uppercase tracking-widest text-neutral-500">{label}</span>
-        <span className="text-neutral-700 shrink-0">{icon}</span>
+      {/* ── Header: icon box + label + period badge ── */}
+      <div className="flex items-center justify-between mb-3 shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="p-1.5 rounded-lg bg-white/[0.06] border border-white/[0.08] text-neutral-500 shrink-0">
+            {icon}
+          </div>
+          <span className="text-[9px] font-bold uppercase tracking-widest text-neutral-500 truncate">
+            {label}
+          </span>
+        </div>
+        {rango !== 'HOY' && (
+          <span className="text-[8px] font-bold text-neutral-600 uppercase tracking-wider bg-neutral-800/60 px-1.5 py-0.5 rounded-md border border-neutral-700/40 shrink-0 ml-2">
+            {rango === 'HISTORICO' ? 'HIST' : rango}
+          </span>
+        )}
       </div>
 
-      {/* Main value — large focal point */}
-      <span className={`text-[2.8rem] font-black italic tracking-tighter leading-none ${valueColor}`}>
+      {/* ── Primary metric — dominant focal point ── */}
+      <span className={`text-[2.8rem] font-black italic tracking-tighter leading-none ${valueColor} shrink-0`}>
         {value}
       </span>
 
-      {/* Subtexts: today + footnote */}
-      <div className="flex flex-col gap-0.5 mt-auto">
-        {showToday && (
-          <div className="flex items-center gap-1.5">
-            <span className="text-[7px] font-black uppercase tracking-widest text-neutral-700">HOY</span>
-            <span className={`text-sm font-black italic tracking-tight leading-none ${valueColor} opacity-60`}>
-              {todayValue}
-            </span>
-          </div>
-        )}
-        {footnote && (
-          <span className="text-[8px] font-black uppercase tracking-widest text-neutral-600">{footnote}</span>
-        )}
-      </div>
-
-      {/* Progress bar */}
+      {/* ── Progress bar (Eficiencia card only) ── */}
       {progress !== undefined && (
-        <div className="h-1.5 bg-neutral-800 rounded-full overflow-hidden">
+        <div className="h-1.5 bg-neutral-800/60 rounded-full overflow-hidden mt-2 mb-1 shrink-0">
           <div
             className={`h-full rounded-full transition-all duration-1000 ${progressColor}`}
             style={{ width: `${progress}%` }}
           />
         </div>
+      )}
+
+      {/* ── HOY block — appears when viewing a range wider than today ── */}
+      {showToday ? (
+        <div className={`mt-auto rounded-xl border p-2.5 transition-all duration-500 ${
+          flashing
+            ? 'bg-white/[0.07] border-white/25'
+            : 'bg-white/[0.025] border-white/[0.07]'
+        }`}>
+          <div className="flex items-center justify-between">
+            {/* Live pill badge */}
+            <div className="inline-flex items-center gap-1.5 bg-white/10 rounded-full px-2 py-0.5 border border-white/[0.15]">
+              <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white">HOY</span>
+            </div>
+            {/* Today's value — large, same accent color */}
+            <span className={`text-xl font-black italic tracking-tight leading-none ${valueColor}`}>
+              {todayValue}
+            </span>
+          </div>
+          {footnote && (
+            <span className="text-[8px] font-bold uppercase tracking-widest text-neutral-600 block mt-1.5">
+              {footnote}
+            </span>
+          )}
+        </div>
+      ) : (
+        footnote && (
+          <span className="text-[8px] font-bold uppercase tracking-widest text-neutral-600 mt-auto block">
+            {footnote}
+          </span>
+        )
       )}
     </div>
   )

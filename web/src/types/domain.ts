@@ -1,4 +1,4 @@
-import type { Tables } from './supabase'
+import type { Tables, TablesInsert } from './supabase'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Database row extensions
@@ -119,6 +119,16 @@ export type TipoReporte = 'MANUAL' | 'AUTOMATICO'
 export type Reporte = Omit<Tables<'reportes_generados'>, 'metricas' | 'tipo'> & {
   metricas: ReporteMetricas | null
   tipo: TipoReporte | null
+}
+
+/**
+ * Typed insert payload for reportes_generados.
+ * Replaces the loose Json metricas field with the concrete ReporteMetricas shape
+ * so call sites don't need casts when building insert payloads.
+ */
+export type ReporteInsert = Omit<TablesInsert<'reportes_generados'>, 'metricas' | 'tipo'> & {
+  metricas?: ReporteMetricas | null
+  tipo?: TipoReporte | null
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

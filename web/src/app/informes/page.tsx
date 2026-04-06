@@ -16,7 +16,7 @@ import { exportarReportePDF, exportarReportePDFComoBase64 } from '@/lib/pdf'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { SkeletonReporteCard } from '@/components/ui/SkeletonCard'
 import { DESTINATARIOS_DEFAULT } from '@/lib/email-config'
-import type { Reporte, FranjaPerdidas, ReporteMetricas } from '@/types/domain'
+import type { Reporte, FranjaPerdidas } from '@/types/domain'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Scroll-lock hook
@@ -227,13 +227,13 @@ const DocumentViewer = memo(function DocumentViewer({
   // Legacy reports (auto-generated before v2.2) may not have entrantes/salientes
   const hasBreakdown = (m?.entrantes ?? 0) + (m?.salientes ?? 0) > 0
 
-  const franjas = useMemo(() => (m as ReporteMetricas | null)?.franjas ?? [], [m])
+  const franjas = useMemo(() => m?.franjas ?? [], [m])
   const franjasCritica = useMemo(() => {
     if (!franjas.length) return null
     return [...franjas].filter(f => f.total > 0).sort((a, b) => b.porcentaje - a.porcentaje)[0] ?? null
   }, [franjas])
 
-  const topConces = useMemo(() => (m as ReporteMetricas | null)?.topConcesionarios ?? [], [m])
+  const topConces = useMemo(() => m?.topConcesionarios ?? [], [m])
 
   const handleEnviar = useCallback(async () => {
     setSending(true)
@@ -797,7 +797,7 @@ export default function InformesPage() {
           eficiencia: kpis.eficiencia,
           franjas,
           topConcesionarios,
-        } as unknown as import('@/types/supabase').Json,
+        },
         resumen_escrito: resumen,
         tipo: 'MANUAL',
       })

@@ -1,4 +1,4 @@
-import jsPDF from 'jspdf'
+import jsPDF, { GState } from 'jspdf'
 import type { Reporte, FranjaPerdidas } from '@/types/domain'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -16,8 +16,6 @@ const DARK_CARD:   [number, number, number] = [ 26,  26,  26]
 const DARK_STRIPE: [number, number, number] = [ 32,  32,  32]
 const MID_GRAY:    [number, number, number] = [100, 100, 100]
 const LIGHT_GRAY:  [number, number, number] = [170, 170, 170]
-
-type GStateFactory = { GState: new (opts: { opacity?: number }) => unknown }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Date parsing
@@ -42,13 +40,12 @@ function fmtDate(raw: string): string {
 function drawWatermark(doc: jsPDF): void {
   const pageW = doc.internal.pageSize.getWidth()
   const pageH = doc.internal.pageSize.getHeight()
-  const gf = doc as unknown as GStateFactory
-  doc.setGState(new gf.GState({ opacity: 0.05 }))
+  doc.setGState(new GState({ opacity: 0.05 }))
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(46)
   doc.setTextColor(...WHITE)
   doc.text('CRUCI-TRACK AUDIT', pageW / 2, pageH / 2, { align: 'center', angle: 45 })
-  doc.setGState(new gf.GState({ opacity: 1 }))
+  doc.setGState(new GState({ opacity: 1 }))
 }
 
 function fillBackground(doc: jsPDF): void {

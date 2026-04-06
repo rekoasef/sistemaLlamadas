@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase'
-import type { TablesInsert } from '@/types/supabase'
-import type { Reporte } from '@/types/domain'
+import type { Json } from '@/types/supabase'
+import type { Reporte, ReporteInsert } from '@/types/domain'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Service functions
@@ -22,13 +22,15 @@ export async function fetchReportes(): Promise<Reporte[]> {
 
 /**
  * Persist a new report record.
- * Accepts the full insert shape from the generated Supabase types
- * to ensure all required fields are provided at the call site.
+ * Accepts the domain-typed ReporteInsert so call sites work with ReporteMetricas
+ * directly. The Json cast is isolated here at the service boundary.
  */
-export async function insertReporte(
-  payload: TablesInsert<'reportes_generados'>
-): Promise<void> {
-  const { error } = await supabase.from('reportes_generados').insert([payload])
+export async function insertReporte(payload: ReporteInsert): Promise<void> {
+  const dbPayload = {
+    ...payload,
+    metricas: (payload.metricas ?? null) as Json | null,
+  }
+  const { error } = await supabase.from('reportes_generados').insert([dbPayload])
   if (error) throw new Error(`[reportes.service] insertReporte: ${error.message}`)
 }
 
