@@ -153,17 +153,28 @@ export function MapCanvas({
           geographies.map((geo) => {
             const key = resolveProvince(geo.properties?.nombre ?? '')
             const count = callsByProvince[key] ?? 0
-            const fill = variant === 'full' && count > 0
-              ? callsToColor(count, maxCalls) + '55'
-              : '#181818'
+            const hasData = count > 0
+            const fill = hasData
+              ? callsToColor(count, maxCalls) + (variant === 'full' ? 'cc' : '99')
+              : (variant === 'full' ? '#252525' : '#1e1e1e')
+            const stroke = variant === 'full' ? '#555555' : '#383838'
+            const strokeWidth = variant === 'full' ? 0.8 : 0.5
             return (
               <Geography
                 key={geo.rsmKey}
                 geography={geo}
                 fill={fill}
-                stroke={variant === 'full' ? '#33333388' : '#2a2a2a'}
-                strokeWidth={0.4}
-                style={{ default: { outline: 'none' }, hover: { outline: 'none', opacity: 0.9 }, pressed: { outline: 'none' } }}
+                stroke={stroke}
+                strokeWidth={strokeWidth}
+                style={{
+                  default: { outline: 'none' },
+                  hover: {
+                    outline: 'none',
+                    fill: hasData ? callsToColor(count, maxCalls) : (variant === 'full' ? '#333333' : '#2a2a2a'),
+                    cursor: 'default',
+                  },
+                  pressed: { outline: 'none' },
+                }}
               />
             )
           })

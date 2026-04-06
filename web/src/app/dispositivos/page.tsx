@@ -93,7 +93,7 @@ export default function DispositivosPage() {
 
               <div>
                 {editingId === d.id ? (
-                  <input 
+                  <input
                     autoFocus
                     value={newAlias}
                     onChange={(e) => setNewAlias(e.target.value)}
@@ -102,7 +102,13 @@ export default function DispositivosPage() {
                 ) : (
                   <>
                     <h3 className="text-4xl font-black italic uppercase text-white tracking-tighter">{d.alias}</h3>
-                    <p className="text-neutral-600 font-mono text-[10px] mt-1 tracking-[0.2em]">ID TÉCNICO: ST-{d.id}</p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-red-600/60">
+                        <Monitor size={11} />
+                      </span>
+                      <p className="text-neutral-400 font-mono text-[11px] tracking-[0.15em]">{d.id}</p>
+                    </div>
+                    <p className="text-neutral-700 font-mono text-[9px] mt-0.5 tracking-[0.2em] uppercase">Línea telefónica</p>
                   </>
                 )}
               </div>

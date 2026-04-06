@@ -55,9 +55,13 @@ function buildDateRange(
 // Public service functions
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Row limit for the dashboard fetch — high enough to cover all current records,
+ *  small enough to keep realtime payloads fast. Raise as the dataset grows. */
+const DASHBOARD_ROW_LIMIT = 2000
+
 /**
- * Fetch paginated calls matching the current dashboard filter.
- * Hard-capped at 200 rows to bound payload size for the realtime view.
+ * Fetch calls matching the current dashboard filter.
+ * Bounded by DASHBOARD_ROW_LIMIT to keep the realtime refresh payload fast.
  * The concesionario join is a lightweight FK lookup, not a full scan.
  */
 export async function fetchLlamadas(
@@ -72,7 +76,7 @@ export async function fetchLlamadas(
   if (range.gte) query = query.gte('fecha_llamada', range.gte)
   if (range.lte) query = query.lte('fecha_llamada', range.lte)
 
-  const { data, error } = await query.limit(200)
+  const { data, error } = await query.limit(DASHBOARD_ROW_LIMIT)
   if (error) throw new Error(`[llamadas.service] fetchLlamadas: ${error.message}`)
   return (data as LlamadaConConcesionario[]) ?? []
 }

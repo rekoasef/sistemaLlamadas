@@ -14,15 +14,18 @@ interface Props {
 }
 
 export default function ModalEditarConcesionario({ concesionario, onClose, onSuccess }: Props) {
+  const isNuevo = !concesionario.id
   const [nombre, setNombre] = useState(concesionario.nombre || '')
   const [localidad, setLocalidad] = useState(concesionario.localidad || '')
   const [ciudad, setCiudad] = useState(concesionario.ciudad || '')
   const [provincia, setProvincia] = useState(concesionario.provincia || '')
   const [latitud, setLatitud] = useState<number | null>(concesionario.latitud ?? null)
   const [longitud, setLongitud] = useState<number | null>(concesionario.longitud ?? null)
+  const [telefonoPrincipal, setTelefonoPrincipal] = useState(concesionario.telefono_principal || '')
   const [telefonos, setTelefonos] = useState<any[]>([])
   const [nuevoTel, setNuevoTel] = useState('')
   const [loading, setLoading] = useState(false)
+  const [createdId, setCreatedId] = useState<string | null>(concesionario.id ?? null)
 
   // ── Autocomplete state ──────────────────────────────────────────────────
   const [sugerencias, setSugerencias] = useState<LocalidadSugerencia[]>([])
@@ -34,17 +37,19 @@ export default function ModalEditarConcesionario({ concesionario, onClose, onSuc
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   // ── Telefonos ──────────────────────────────────────────────────────────
-  const fetchTelefonos = useCallback(async () => {
+  const fetchTelefonos = useCallback(async (targetId?: string) => {
+    const id = targetId ?? createdId
+    if (!id) return
     const { data } = await supabase
       .from('concesionario_telefonos')
       .select('*')
-      .eq('concesionario_id', concesionario.id)
+      .eq('concesionario_id', id)
     setTelefonos(data || [])
-  }, [concesionario.id])
+  }, [createdId])
 
   useEffect(() => {
-    if (concesionario.id) fetchTelefonos()
-  }, [concesionario.id, fetchTelefonos])
+    if (createdId) fetchTelefonos()
+  }, [createdId, fetchTelefonos])
 
   // ── City autocomplete ──────────────────────────────────────────────────
   const handleCiudadChange = (val: string) => {
@@ -85,26 +90,62 @@ export default function ModalEditarConcesionario({ concesionario, onClose, onSuc
 
   // ── Save ────────────────────────────────────────────────────────────────
   const handleUpdateBase = async () => {
+    if (!nombre.trim()) {
+      alert('EL NOMBRE (RAZÓN SOCIAL) ES OBLIGATORIO')
+      return
+    }
+    if (!telefonoPrincipal.trim()) {
+      alert('EL TELÉFONO PRINCIPAL ES OBLIGATORIO')
+      return
+    }
+
     setLoading(true)
     try {
-      const { error } = await supabase
-        .from('concesionarios')
-        .update({
-          nombre: nombre.toUpperCase(),
-          localidad: localidad.toUpperCase() || null,
-          ciudad: ciudad || null,
-          provincia: provincia || null,
-          latitud: latitud ?? null,
-          longitud: longitud ?? null,
-        })
-        .eq('id', concesionario.id)
+      if (isNuevo) {
+        // INSERT new concesionario
+        const { data, error } = await supabase
+          .from('concesionarios')
+          .insert({
+            nombre: nombre.toUpperCase(),
+            localidad: localidad.toUpperCase() || null,
+            telefono_principal: telefonoPrincipal.trim(),
+            ciudad: ciudad || null,
+            provincia: provincia || null,
+            latitud: latitud ?? null,
+            longitud: longitud ?? null,
+          })
+          .select('id')
+          .single()
 
-      if (error) throw error
-      onSuccess()
-      alert('DATOS ACTUALIZADOS CORRECTAMENTE')
-    } catch (err) {
+        if (error) throw error
+        setCreatedId(data.id)
+        onSuccess()
+        alert('CONCESIONARIO CREADO CORRECTAMENTE')
+      } else {
+        // UPDATE existing concesionario
+        const { error } = await supabase
+          .from('concesionarios')
+          .update({
+            nombre: nombre.toUpperCase(),
+            localidad: localidad.toUpperCase() || null,
+            telefono_principal: telefonoPrincipal.trim(),
+            ciudad: ciudad || null,
+            provincia: provincia || null,
+            latitud: latitud ?? null,
+            longitud: longitud ?? null,
+          })
+          .eq('id', concesionario.id)
+
+        if (error) throw error
+        onSuccess()
+        alert('DATOS ACTUALIZADOS CORRECTAMENTE')
+      }
+    } catch (err: any) {
       console.error(err)
-      alert('ERROR AL ACTUALIZAR')
+      const msg = err?.message?.includes('duplicate') || err?.message?.includes('unique')
+        ? 'YA EXISTE UN CONCESIONARIO CON ESE TELÉFONO PRINCIPAL'
+        : `ERROR: ${err?.message ?? 'Error desconocido'}`
+      alert(msg)
     } finally {
       setLoading(false)
     }
@@ -112,12 +153,16 @@ export default function ModalEditarConcesionario({ concesionario, onClose, onSuc
 
   // ── Telefonos CRUD ─────────────────────────────────────────────────────
   const addTelefono = async () => {
-    if (!nuevoTel) return
+    if (!nuevoTel.trim()) return
+    if (!createdId) {
+      alert('PRIMERO GUARDA LOS DATOS PRINCIPALES DEL CONCESIONARIO')
+      return
+    }
     setLoading(true)
     try {
       const { error } = await supabase
         .from('concesionario_telefonos')
-        .insert([{ concesionario_id: concesionario.id, numero_telefono: nuevoTel, nombre_referencia: 'ADICIONAL' }])
+        .insert([{ concesionario_id: createdId, numero_telefono: nuevoTel.trim(), nombre_referencia: 'ADICIONAL' }])
       if (error) throw error
       setNuevoTel('')
       fetchTelefonos()
@@ -150,10 +195,10 @@ export default function ModalEditarConcesionario({ concesionario, onClose, onSuc
             </div>
             <div>
               <h2 className="text-white font-black italic uppercase tracking-tighter text-2xl leading-none">
-                Configuración de Terminal
+                {isNuevo ? 'Nuevo Concesionario' : 'Configuración de Terminal'}
               </h2>
               <p className="text-neutral-500 text-[9px] font-bold uppercase tracking-[0.3em] mt-2 italic">
-                ID: {concesionario.id?.split('-')[0]}...
+                {isNuevo ? 'Completá todos los campos requeridos' : `ID: ${(createdId ?? concesionario.id)?.split('-')[0]}...`}
               </p>
             </div>
           </div>
@@ -175,7 +220,7 @@ export default function ModalEditarConcesionario({ concesionario, onClose, onSuc
               {/* Nombre */}
               <div className="group">
                 <label className="text-[9px] font-black text-neutral-600 uppercase mb-2 block ml-1 group-focus-within:text-red-500 transition-colors">
-                  Razón Social
+                  Razón Social <span className="text-red-600">*</span>
                 </label>
                 <div className="relative">
                   <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-700" size={18} />
@@ -183,6 +228,22 @@ export default function ModalEditarConcesionario({ concesionario, onClose, onSuc
                     className="w-full bg-black border border-neutral-800 rounded-2xl py-4 pl-12 pr-4 text-white font-bold italic focus:border-red-600 outline-none uppercase transition-all"
                     value={nombre}
                     onChange={(e) => setNombre(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Teléfono Principal */}
+              <div className="group">
+                <label className="text-[9px] font-black text-neutral-600 uppercase mb-2 block ml-1 group-focus-within:text-red-500 transition-colors">
+                  Teléfono Principal <span className="text-red-600">*</span>
+                </label>
+                <div className="relative">
+                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-700" size={18} />
+                  <input
+                    placeholder="+54 9..."
+                    className="w-full bg-black border border-neutral-800 rounded-2xl py-4 pl-12 pr-4 text-white font-bold font-mono focus:border-red-600 outline-none transition-all placeholder:text-neutral-800 placeholder:not-italic"
+                    value={telefonoPrincipal}
+                    onChange={(e) => setTelefonoPrincipal(e.target.value)}
                   />
                 </div>
               </div>
@@ -282,7 +343,7 @@ export default function ModalEditarConcesionario({ concesionario, onClose, onSuc
               className="w-full py-5 bg-white text-black font-black uppercase italic rounded-2xl hover:bg-red-600 hover:text-white transition-all text-xs tracking-widest shadow-xl active:scale-95 disabled:opacity-50"
             >
               <Save size={18} className="inline mr-2" />
-              {loading ? 'Sincronizando...' : 'Guardar Cambios'}
+              {loading ? 'Procesando...' : isNuevo && !createdId ? 'Crear Concesionario' : 'Guardar Cambios'}
             </button>
           </div>
 
