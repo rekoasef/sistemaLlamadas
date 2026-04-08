@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Monitor, Edit3, Save, X, Activity, Smartphone, WifiOff, ShieldAlert, History, ArrowRight } from 'lucide-react'
 
-const OFFLINE_THRESHOLD_MS = 20 * 60 * 1000
+const OFFLINE_THRESHOLD_MS = 45 * 60 * 1000
 
 type TerminalEstado = 'ONLINE' | 'SIN_PERMISOS' | 'OFFLINE' | 'DESCONOCIDO'
 

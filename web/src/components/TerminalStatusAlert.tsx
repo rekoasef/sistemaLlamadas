@@ -10,7 +10,7 @@ interface TerminalStatus {
   last_seen: string
 }
 
-const OFFLINE_THRESHOLD_MS = 20 * 60 * 1000
+const OFFLINE_THRESHOLD_MS = 45 * 60 * 1000
 
 function resolveStatus(t: TerminalStatus): 'SIN_PERMISOS' | 'OFFLINE' | 'OK' {
   if (t.status === 'SIN_PERMISOS') return 'SIN_PERMISOS'
