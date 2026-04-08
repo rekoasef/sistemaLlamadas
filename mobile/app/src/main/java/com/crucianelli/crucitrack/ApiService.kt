@@ -14,4 +14,12 @@ interface ApiService {
         @Header("Authorization") bearer: String,
         @Body call: CallRequest
     ): Response<Unit>
+
+    @Headers("Prefer: return=minimal,resolution=merge-duplicates")
+    @POST("terminal_status")
+    suspend fun sendHeartbeat(
+        @Header("apikey") apiKey: String,
+        @Header("Authorization") bearer: String,
+        @Body heartbeat: HeartbeatRequest
+    ): Response<Unit>
 }
