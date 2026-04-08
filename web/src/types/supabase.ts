@@ -144,6 +144,51 @@ export type Database = {
           },
         ]
       }
+      terminal_status: {
+        Row: {
+          terminal_id: string
+          status: string
+          last_seen: string
+          updated_at: string
+        }
+        Insert: {
+          terminal_id: string
+          status?: string
+          last_seen?: string
+          updated_at?: string
+        }
+        Update: {
+          terminal_id?: string
+          status?: string
+          last_seen?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      terminal_status_history: {
+        Row: {
+          id: number
+          terminal_id: string
+          status_previo: string | null
+          status_nuevo: string
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          terminal_id: string
+          status_previo?: string | null
+          status_nuevo: string
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          terminal_id?: string
+          status_previo?: string | null
+          status_nuevo?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       reportes_generados: {
         Row: {
           creado_at: string | null
