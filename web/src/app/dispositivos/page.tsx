@@ -4,9 +4,10 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Monitor, Edit3, Save, X, Activity, Smartphone, WifiOff, ShieldAlert, History, ArrowRight } from 'lucide-react'
 
-const OFFLINE_THRESHOLD_MS = 45 * 60 * 1000
+const ONLINE_THRESHOLD_MS  = 45 * 60 * 1000      // < 45 min → En línea
+const ALERTA_THRESHOLD_MS  = 24 * 60 * 60 * 1000  // > 24 hs  → alerta roja
 
-type TerminalEstado = 'ONLINE' | 'SIN_PERMISOS' | 'OFFLINE' | 'DESCONOCIDO'
+type TerminalEstado = 'ONLINE' | 'SIN_PERMISOS' | 'SIN_SENAL' | 'SIN_SENAL_DIA' | 'DESCONOCIDO'
 
 interface HistorialEntry {
   id: number
@@ -19,16 +20,19 @@ interface HistorialEntry {
 function resolveEstado(status: string | undefined, lastSeen: string | undefined): TerminalEstado {
   if (!status || !lastSeen) return 'DESCONOCIDO'
   if (status === 'SIN_PERMISOS') return 'SIN_PERMISOS'
-  if (status === 'OFFLINE' || Date.now() - new Date(lastSeen).getTime() > OFFLINE_THRESHOLD_MS) return 'OFFLINE'
-  return 'ONLINE'
+  const elapsed = Date.now() - new Date(lastSeen).getTime()
+  if (elapsed <= ONLINE_THRESHOLD_MS) return 'ONLINE'
+  if (elapsed >= ALERTA_THRESHOLD_MS) return 'SIN_SENAL_DIA'
+  return 'SIN_SENAL'
 }
 
-function formatLastSeen(lastSeen: string | undefined): string {
-  if (!lastSeen) return ''
-  const mins = Math.floor((Date.now() - new Date(lastSeen).getTime()) / 60000)
-  if (mins < 1) return 'hace menos de 1 min'
+function formatElapsed(lastSeen: string): string {
+  const ms = Date.now() - new Date(lastSeen).getTime()
+  const mins = Math.floor(ms / 60000)
   if (mins < 60) return `hace ${mins} min`
-  return `hace ${Math.floor(mins / 60)}h`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `hace ${hrs}h`
+  return `hace más de 1 día`
 }
 
 function formatFecha(iso: string): string {
@@ -80,16 +84,17 @@ function TerminalStatusBadge({ status, lastSeen }: { status?: string; lastSeen?:
     )
   }
 
-  if (estado === 'OFFLINE') {
+  if (estado === 'SIN_SENAL' || estado === 'SIN_SENAL_DIA') {
+    const esAlerta = estado === 'SIN_SENAL_DIA'
     return (
       <div className="flex flex-col gap-0.5">
         <div className="flex items-center gap-2">
-          <WifiOff size={12} className="text-yellow-500" />
-          <span className="text-[9px] font-black text-yellow-500 uppercase tracking-widest">Sin conexión</span>
+          <span className={`h-2 w-2 rounded-full ${esAlerta ? 'bg-red-500' : 'bg-yellow-500'}`} />
+          <span className={`text-[9px] font-black uppercase tracking-widest ${esAlerta ? 'text-red-500' : 'text-yellow-500'}`}>
+            En línea · {lastSeen ? formatElapsed(lastSeen) : '—'}
+          </span>
         </div>
-        {lastSeen && (
-          <span className="text-[8px] text-neutral-600 tracking-wide ml-4">{formatLastSeen(lastSeen)}</span>
-        )}
+        <span className="text-[8px] text-neutral-600 tracking-wide ml-4 uppercase">sin registro de señal</span>
       </div>
     )
   }
