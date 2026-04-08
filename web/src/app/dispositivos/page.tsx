@@ -2,7 +2,70 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Monitor, Edit3, Save, X, Activity, Smartphone } from 'lucide-react'
+import { Monitor, Edit3, Save, X, Activity, Smartphone, WifiOff, ShieldAlert } from 'lucide-react'
+
+const OFFLINE_THRESHOLD_MS = 20 * 60 * 1000
+
+type TerminalEstado = 'ONLINE' | 'SIN_PERMISOS' | 'OFFLINE' | 'DESCONOCIDO'
+
+function resolveEstado(status: string | undefined, lastSeen: string | undefined): TerminalEstado {
+  if (!status || !lastSeen) return 'DESCONOCIDO'
+  if (status === 'SIN_PERMISOS') return 'SIN_PERMISOS'
+  if (status === 'OFFLINE' || Date.now() - new Date(lastSeen).getTime() > OFFLINE_THRESHOLD_MS) return 'OFFLINE'
+  return 'ONLINE'
+}
+
+function formatLastSeen(lastSeen: string | undefined): string {
+  if (!lastSeen) return ''
+  const mins = Math.floor((Date.now() - new Date(lastSeen).getTime()) / 60000)
+  if (mins < 1) return 'hace menos de 1 min'
+  if (mins < 60) return `hace ${mins} min`
+  return `hace ${Math.floor(mins / 60)}h`
+}
+
+function TerminalStatusBadge({ status, lastSeen }: { status?: string; lastSeen?: string }) {
+  const estado = resolveEstado(status, lastSeen)
+
+  if (estado === 'ONLINE') {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+        <span className="text-[9px] font-black text-neutral-500 uppercase tracking-widest">En Línea</span>
+      </div>
+    )
+  }
+
+  if (estado === 'SIN_PERMISOS') {
+    return (
+      <div className="flex items-center gap-2">
+        <ShieldAlert size={12} className="text-red-500" />
+        <span className="text-[9px] font-black text-red-500 uppercase tracking-widest">Sin permisos</span>
+      </div>
+    )
+  }
+
+  if (estado === 'OFFLINE') {
+    return (
+      <div className="flex flex-col gap-0.5">
+        <div className="flex items-center gap-2">
+          <WifiOff size={12} className="text-yellow-500" />
+          <span className="text-[9px] font-black text-yellow-500 uppercase tracking-widest">Sin conexión</span>
+        </div>
+        {lastSeen && (
+          <span className="text-[8px] text-neutral-600 tracking-wide ml-4">{formatLastSeen(lastSeen)}</span>
+        )}
+      </div>
+    )
+  }
+
+  // DESCONOCIDO: nunca envió heartbeat
+  return (
+    <div className="flex items-center gap-2">
+      <span className="h-2 w-2 rounded-full bg-neutral-600" />
+      <span className="text-[9px] font-black text-neutral-600 uppercase tracking-widest">Sin datos</span>
+    </div>
+  )
+}
 
 export default function DispositivosPage() {
   const [dispositivos, setDispositivos] = useState<any[]>([])
@@ -13,12 +76,12 @@ export default function DispositivosPage() {
 
   const fetchData = useCallback(async () => {
     setLoading(true)
-    
+
     // 1. Obtener todos los IDs únicos de dispositivos que han llamado
     const { data: llamadas } = await supabase
       .from('llamadas')
       .select('dispositivo_id')
-    
+
     const uniqueIds = Array.from(new Set(llamadas?.map(l => l.dispositivo_id)))
 
     // 2. Obtener los alias existentes
@@ -26,15 +89,23 @@ export default function DispositivosPage() {
       .from('dispositivo_alias')
       .select('*')
 
+    // 3. Obtener estado real de terminales
+    const { data: statusData } = await supabase
+      .from('terminal_status')
+      .select('terminal_id, status, last_seen')
+
     setAliasList(aliasData || [])
-    
-    // 3. Cruzar datos para el panel
+
+    // 4. Cruzar datos para el panel
     const list = uniqueIds.map(id => {
       const aliasObj = aliasData?.find(a => a.dispositivo_id === id)
+      const statusObj = statusData?.find(s => s.terminal_id === id)
       return {
         id,
         alias: aliasObj ? aliasObj.alias : `Terminal ${id}`,
-        isRegistered: !!aliasObj
+        isRegistered: !!aliasObj,
+        status: statusObj?.status,
+        lastSeen: statusObj?.last_seen,
       }
     })
 
@@ -42,7 +113,16 @@ export default function DispositivosPage() {
     setLoading(false)
   }, [])
 
-  useEffect(() => { fetchData() }, [fetchData])
+  useEffect(() => {
+    fetchData()
+
+    const channel = supabase
+      .channel('dispositivos-terminal-status')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'terminal_status' }, fetchData)
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [fetchData])
 
   const saveAlias = async (dispositivoId: string) => {
     const { error } = await supabase
@@ -114,10 +194,7 @@ export default function DispositivosPage() {
               </div>
 
               <div className="pt-6 border-t border-neutral-800 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                  <span className="text-[9px] font-black text-neutral-500 uppercase tracking-widest">En Línea</span>
-                </div>
+                <TerminalStatusBadge status={d.status} lastSeen={d.lastSeen} />
                 <Activity size={16} className="text-neutral-800" />
               </div>
             </div>

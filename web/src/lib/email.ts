@@ -54,6 +54,81 @@ export async function enviarReportePorEmail(params: EnvioReporteParams): Promise
   })
 }
 
+export interface AlertaTerminalParams {
+  terminalId: string
+  alias?: string
+  statusPrevio: string | null
+  statusNuevo: string
+  timestamp: string
+}
+
+const ESTADO_LABEL: Record<string, string> = {
+  ONLINE:       '🟢 En línea',
+  OFFLINE:      '🔴 Sin conexión',
+  SIN_PERMISOS: '⚠️ Sin permisos de llamadas',
+}
+
+function estadoLabel(s: string | null): string {
+  return s ? (ESTADO_LABEL[s] ?? s) : 'Desconocido'
+}
+
+/**
+ * Send a terminal status change alert email.
+ * Runs server-side only (API Route Handler).
+ */
+export async function enviarAlertaTerminal(params: AlertaTerminalParams): Promise<void> {
+  const { terminalId, alias, statusPrevio, statusNuevo, timestamp } = params
+  const transporter = crearTransporter()
+  const nombre = alias ?? `Terminal ${terminalId}`
+  const fecha = new Date(timestamp).toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })
+
+  const esGrave = statusNuevo === 'SIN_PERMISOS' || statusNuevo === 'OFFLINE'
+  const accentColor = statusNuevo === 'SIN_PERMISOS' ? '#DC2626' : statusNuevo === 'OFFLINE' ? '#ca8a04' : '#22c55e'
+
+  await transporter.sendMail({
+    from: `"Cruci-Track Sistema" <${GMAIL_USER}>`,
+    to: 'rasef@crucianelli.com',
+    subject: `[CRUCI-TRACK] ${esGrave ? '⚠️ ALERTA' : 'INFO'} — ${nombre} cambió a ${statusNuevo}`,
+    html: `
+      <div style="font-family:Arial,sans-serif;background:#0F0F0F;color:#fff;padding:40px;max-width:600px;margin:0 auto;border-radius:12px;">
+        <div style="background:#DC2626;padding:20px;border-radius:8px;margin-bottom:24px;">
+          <h1 style="margin:0;font-size:24px;font-weight:900;font-style:italic;letter-spacing:-1px;">CRUCI-TRACK</h1>
+          <p style="margin:4px 0 0;font-size:11px;opacity:.8;letter-spacing:2px;">SISTEMA DE AUDITORÍA · CRUCIANELLI S.A.</p>
+        </div>
+        <h2 style="color:${accentColor};font-size:18px;margin-bottom:4px;">Cambio de estado detectado</h2>
+        <p style="color:#666;font-size:12px;margin-bottom:28px;">${fecha}</p>
+        <div style="background:#1a1a1a;border:1px solid #333;border-radius:8px;padding:24px;margin-bottom:24px;">
+          <table style="width:100%;border-collapse:collapse;">
+            <tr><td style="color:#555;font-size:11px;padding:6px 0;width:140px;">TERMINAL</td>
+                <td style="color:#fff;font-weight:bold;">${nombre}</td></tr>
+            <tr><td style="color:#555;font-size:11px;padding:6px 0;">ID</td>
+                <td style="color:#aaa;font-family:monospace;font-size:12px;">${terminalId}</td></tr>
+            <tr><td style="color:#555;font-size:11px;padding:6px 0;">ESTADO ANTERIOR</td>
+                <td style="color:#aaa;">${estadoLabel(statusPrevio)}</td></tr>
+            <tr><td style="color:#555;font-size:11px;padding:6px 0;">ESTADO NUEVO</td>
+                <td style="color:${accentColor};font-weight:bold;">${estadoLabel(statusNuevo)}</td></tr>
+          </table>
+        </div>
+        ${statusNuevo === 'SIN_PERMISOS' ? `
+        <div style="background:#450a0a;border:1px solid #7f1d1d;border-radius:8px;padding:16px;margin-bottom:24px;">
+          <p style="color:#fca5a5;margin:0;font-size:13px;">
+            <strong>Acción requerida:</strong> El usuario del dispositivo revocó los permisos de llamadas a la app Cruci-Track. Las llamadas <strong>no se están registrando</strong>. Contactar al responsable del terminal para restaurar los permisos.
+          </p>
+        </div>` : ''}
+        ${statusNuevo === 'OFFLINE' ? `
+        <div style="background:#422006;border:1px solid #78350f;border-radius:8px;padding:16px;margin-bottom:24px;">
+          <p style="color:#fcd34d;margin:0;font-size:13px;">
+            <strong>Posibles causas:</strong> Sin conexión a internet, app desinstalada, teléfono apagado, o falla en la aplicación. Las llamadas <strong>no se están sincronizando</strong>.
+          </p>
+        </div>` : ''}
+        <p style="color:#333;font-size:11px;border-top:1px solid #222;padding-top:16px;margin-top:24px;">
+          Notificación automática · Cruci-Track · Crucianelli S.A.
+        </p>
+      </div>
+    `,
+  })
+}
+
 /**
  * Send a test email to verify credentials and delivery.
  * Runs server-side only (API Route Handler).
