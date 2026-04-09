@@ -2,12 +2,14 @@ package com.crucianelli.crucitrack
 
 import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.*
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.*
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
@@ -15,16 +17,27 @@ import android.graphics.Color
 import androidx.cardview.widget.CardView
 
 class MainActivity : AppCompatActivity() {
+
+    private val PERMISOS = arrayOf(
+        Manifest.permission.READ_PHONE_STATE,
+        Manifest.permission.READ_CALL_LOG,
+        Manifest.permission.PROCESS_OUTGOING_CALLS
+    )
+
+    private fun tienePermisos() = PERMISOS.all {
+        ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(32, 32, 32, 32)
         }
-        
+
         val header = RelativeLayout(this)
-        val title = TextView(this).apply { 
+        val title = TextView(this).apply {
             text = "Historial Cruci Track"
             textSize = 22f
             setTypeface(null, android.graphics.Typeface.BOLD)
@@ -43,14 +56,9 @@ class MainActivity : AppCompatActivity() {
         setContentView(root)
 
         rv.layoutManager = LinearLayoutManager(this)
-        
-        ActivityCompat.requestPermissions(this, arrayOf(
-            Manifest.permission.READ_PHONE_STATE, 
-            Manifest.permission.READ_CALL_LOG, 
-            Manifest.permission.PROCESS_OUTGOING_CALLS), 1)
 
         lifecycleScope.launch {
-            AppDatabase.getDatabase(this@MainActivity).callDao().getAllCalls().collect { 
+            AppDatabase.getDatabase(this@MainActivity).callDao().getAllCalls().collect {
                 rv.adapter = CallAdapter(it)
             }
         }
@@ -58,6 +66,24 @@ class MainActivity : AppCompatActivity() {
         val prefs = getSharedPreferences("Config", Context.MODE_PRIVATE)
         if (!prefs.contains("device_id")) {
             showDeviceIdDialog()
+        }
+
+        HeartbeatWorker.schedule(this)
+
+        if (tienePermisos()) {
+            // Ya tiene permisos → heartbeat inmediato
+            HeartbeatWorker.sendNow(this)
+        } else {
+            // Pedir permisos → el heartbeat se dispara en onRequestPermissionsResult
+            ActivityCompat.requestPermissions(this, PERMISOS, 1)
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 1) {
+            // Enviar heartbeat ahora que el usuario respondió al diálogo de permisos
+            HeartbeatWorker.sendNow(this)
         }
     }
 
@@ -76,6 +102,8 @@ class MainActivity : AppCompatActivity() {
                 if (id.isNotEmpty()) {
                     getSharedPreferences("Config", Context.MODE_PRIVATE).edit().putString("device_id", id).apply()
                     Toast.makeText(this, "Guardado: ID $id", Toast.LENGTH_SHORT).show()
+                    HeartbeatWorker.schedule(this)
+                    HeartbeatWorker.sendNow(this)
                 }
             }.show()
     }

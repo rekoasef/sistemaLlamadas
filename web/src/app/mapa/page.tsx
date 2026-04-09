@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { MapPin, Wifi, ChevronLeft } from 'lucide-react'
-import { fetchLlamadasWallboard, type RangoWallboard } from '@/services/llamadas.service'
+import { fetchLlamadasWallboard, fetchConcesionariosConCoords, type RangoWallboard, type ConcesionarioConCoords } from '@/services/llamadas.service'
 import { supabase } from '@/lib/supabase'
 import type { LlamadaConConcesionario } from '@/types/domain'
 import {
@@ -54,6 +54,7 @@ const LS_KEY = 'mapa-rango'
 export default function MapaPage() {
   const [rango, setRangoState] = useState<RangoWallboard>('HOY')
   const [llamadas, setLlamadas] = useState<LlamadaConConcesionario[]>([])
+  const [allConcesionarios, setAllConcesionarios] = useState<ConcesionarioConCoords[]>([])
   const [loading, setLoading] = useState(true)
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
   const [pulse, setPulse] = useState(false)
@@ -74,8 +75,12 @@ export default function MapaPage() {
 
   const cargarDatos = useCallback(async () => {
     try {
-      const rows = await fetchLlamadasWallboard(rango)
+      const [rows, concesionarios] = await Promise.all([
+        fetchLlamadasWallboard(rango),
+        fetchConcesionariosConCoords(),
+      ])
       setLlamadas(rows)
+      setAllConcesionarios(concesionarios)
       setLastUpdate(new Date())
       setPulse(true)
       setTimeout(() => setPulse(false), 800)
@@ -106,7 +111,7 @@ export default function MapaPage() {
   }, [])
 
   // ── Derived data ────────────────────────────────────────────────────────
-  const pins = usePins(llamadas)
+  const pins = usePins(llamadas, allConcesionarios)
   const callsByProvince = useCallsByProvince(llamadas)
   const maxCalls = useMemo(() => Math.max(...Object.values(callsByProvince), 1), [callsByProvince])
   const maxPinCalls = useMemo(() => Math.max(...pins.map((p) => p.total), 1), [pins])

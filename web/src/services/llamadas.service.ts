@@ -184,3 +184,28 @@ export async function fetchLlamadasWallboard(
   if (error) throw new Error(`[llamadas.service] fetchLlamadasWallboard: ${error.message}`)
   return (data as LlamadaConConcesionario[]) ?? []
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Concesionarios con coordenadas
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface ConcesionarioConCoords {
+  id: string
+  nombre: string
+  ciudad: string | null
+  provincia: string | null
+  latitud: number
+  longitud: number
+}
+
+/** Returns all concesionarios that have lat/lng set. */
+export async function fetchConcesionariosConCoords(): Promise<ConcesionarioConCoords[]> {
+  const { data, error } = await supabase
+    .from('concesionarios')
+    .select('id, nombre, ciudad, provincia, latitud, longitud')
+    .not('latitud', 'is', null)
+    .not('longitud', 'is', null)
+
+  if (error) throw new Error(`[llamadas.service] fetchConcesionariosConCoords: ${error.message}`)
+  return (data as ConcesionarioConCoords[]) ?? []
+}
