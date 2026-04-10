@@ -1,6 +1,6 @@
 -- Merging decision tree log ---
 provider#androidx.startup.InitializationProvider
-INJECTED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:39:9-47:20
+INJECTED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:52:9-60:20
 MERGED from [androidx.work:work-runtime:2.8.1] /home/renzoasef/.gradle/caches/transforms-3/762eaf076cb263bb61e00e4e094ad61b/transformed/work-runtime-2.8.1/AndroidManifest.xml:29:9-37:20
 MERGED from [androidx.work:work-runtime:2.8.1] /home/renzoasef/.gradle/caches/transforms-3/762eaf076cb263bb61e00e4e094ad61b/transformed/work-runtime-2.8.1/AndroidManifest.xml:29:9-37:20
 MERGED from [androidx.emoji2:emoji2:1.2.0] /home/renzoasef/.gradle/caches/transforms-3/ed9fe1f809bd0d671abadaa8a84e276f/transformed/jetified-emoji2-1.2.0/AndroidManifest.xml:24:9-32:20
@@ -12,19 +12,19 @@ MERGED from [androidx.profileinstaller:profileinstaller:1.3.0] /home/renzoasef/.
 MERGED from [androidx.startup:startup-runtime:1.1.1] /home/renzoasef/.gradle/caches/transforms-3/3c450a1764a720524e15c708f65ca5b9/transformed/jetified-startup-runtime-1.1.1/AndroidManifest.xml:26:9-30:34
 MERGED from [androidx.startup:startup-runtime:1.1.1] /home/renzoasef/.gradle/caches/transforms-3/3c450a1764a720524e15c708f65ca5b9/transformed/jetified-startup-runtime-1.1.1/AndroidManifest.xml:26:9-30:34
 	tools:node
-		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:43:13-31
+		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:56:13-31
 	android:authorities
 		INJECTED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml
-		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:41:13-68
+		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:54:13-68
 	android:exported
-		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:42:13-37
+		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:55:13-37
 	android:name
-		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:40:13-67
+		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:53:13-67
 manifest
-ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:2:1-50:12
-INJECTED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:2:1-50:12
-INJECTED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:2:1-50:12
-INJECTED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:2:1-50:12
+ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:2:1-63:12
+INJECTED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:2:1-63:12
+INJECTED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:2:1-63:12
+INJECTED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:2:1-63:12
 MERGED from [androidx.work:work-runtime-ktx:2.8.1] /home/renzoasef/.gradle/caches/transforms-3/945fb459f26cc8f32715d673a38d890c/transformed/work-runtime-ktx-2.8.1/AndroidManifest.xml:17:1-22:12
 MERGED from [com.google.android.material:material:1.9.0] /home/renzoasef/.gradle/caches/transforms-3/ac696d97397e92cd8da9bd8aab33e636/transformed/material-1.9.0/AndroidManifest.xml:17:1-26:12
 MERGED from [androidx.appcompat:appcompat-resources:1.6.1] /home/renzoasef/.gradle/caches/transforms-3/ecb9f1e5783cdfa2c0c97d661087b996/transformed/jetified-appcompat-resources-1.6.1/AndroidManifest.xml:17:1-22:12
@@ -122,9 +122,19 @@ uses-permission#android.permission.POST_NOTIFICATIONS
 ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:14:5-77
 	android:name
 		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:14:22-74
+uses-permission#android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
+ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:15:5-95
+	android:name
+		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:15:22-92
+uses-permission#android.permission.RECEIVE_BOOT_COMPLETED
+ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:16:5-81
+MERGED from [androidx.work:work-runtime:2.8.1] /home/renzoasef/.gradle/caches/transforms-3/762eaf076cb263bb61e00e4e094ad61b/transformed/work-runtime-2.8.1/AndroidManifest.xml:25:5-81
+MERGED from [androidx.work:work-runtime:2.8.1] /home/renzoasef/.gradle/caches/transforms-3/762eaf076cb263bb61e00e4e094ad61b/transformed/work-runtime-2.8.1/AndroidManifest.xml:25:5-81
+	android:name
+		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:16:22-78
 application
-ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:14:78-49:19
-INJECTED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:14:78-49:19
+ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:18:5-62:19
+INJECTED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:18:5-62:19
 MERGED from [com.google.android.material:material:1.9.0] /home/renzoasef/.gradle/caches/transforms-3/ac696d97397e92cd8da9bd8aab33e636/transformed/material-1.9.0/AndroidManifest.xml:24:5-20
 MERGED from [com.google.android.material:material:1.9.0] /home/renzoasef/.gradle/caches/transforms-3/ac696d97397e92cd8da9bd8aab33e636/transformed/material-1.9.0/AndroidManifest.xml:24:5-20
 MERGED from [androidx.constraintlayout:constraintlayout:2.0.1] /home/renzoasef/.gradle/caches/transforms-3/f6ce2d3687faea7e006647822d5832c8/transformed/constraintlayout-2.0.1/AndroidManifest.xml:9:5-20
@@ -150,57 +160,73 @@ MERGED from [androidx.startup:startup-runtime:1.1.1] /home/renzoasef/.gradle/cac
 	android:appComponentFactory
 		ADDED from [androidx.core:core:1.12.0] /home/renzoasef/.gradle/caches/transforms-3/4c8da3a143fa75cb35c2b797e5843a04/transformed/core-1.12.0/AndroidManifest.xml:28:18-86
 	android:supportsRtl
-		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:17:9-35
+		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:21:9-35
 	android:label
-		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:16:9-36
+		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:20:9-36
 	android:allowBackup
-		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:15:9-35
+		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:19:9-35
 	android:theme
-		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:18:9-65
+		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:22:9-65
 	android:usesCleartextTraffic
-		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:19:9-44
+		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:23:9-44
 activity#com.crucianelli.crucitrack.MainActivity
-ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:21:9-28:20
+ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:25:9-32:20
 	android:exported
-		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:23:13-36
+		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:27:13-36
 	android:name
-		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:22:13-41
+		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:26:13-41
 intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
-ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:24:13-27:29
+ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:28:13-31:29
 action#android.intent.action.MAIN
-ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:25:17-69
+ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:29:17-69
 	android:name
-		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:25:25-66
+		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:29:25-66
 category#android.intent.category.LAUNCHER
-ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:26:17-77
+ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:30:17-77
 	android:name
-		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:26:27-74
+		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:30:27-74
 receiver#com.crucianelli.crucitrack.CallReceiver
-ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:30:9-37:20
+ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:34:9-41:20
 	android:exported
-		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:32:13-36
+		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:36:13-36
 	android:name
-		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:31:13-41
+		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:35:13-41
 intent-filter#action:name:android.intent.action.NEW_OUTGOING_CALL+action:name:android.intent.action.PHONE_STATE
-ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:33:13-36:29
+ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:37:13-40:29
 	android:priority
-		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:33:28-50
+		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:37:28-50
 action#android.intent.action.PHONE_STATE
-ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:34:17-76
+ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:38:17-76
 	android:name
-		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:34:25-73
+		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:38:25-73
 action#android.intent.action.NEW_OUTGOING_CALL
-ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:35:17-82
+ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:39:17-82
 	android:name
-		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:35:25-79
+		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:39:25-79
+receiver#com.crucianelli.crucitrack.BootReceiver
+ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:43:9-50:20
+	android:exported
+		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:45:13-36
+	android:name
+		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:44:13-41
+intent-filter#action:name:android.intent.action.BOOT_COMPLETED+action:name:android.intent.action.MY_PACKAGE_REPLACED
+ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:46:13-49:29
+action#android.intent.action.BOOT_COMPLETED
+ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:47:17-79
+	android:name
+		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:47:25-76
+action#android.intent.action.MY_PACKAGE_REPLACED
+ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:48:17-84
+	android:name
+		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:48:25-81
 meta-data#androidx.work.WorkManagerInitializer
-ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:44:13-46:52
+ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:57:13-59:52
 MERGED from [androidx.work:work-runtime:2.8.1] /home/renzoasef/.gradle/caches/transforms-3/762eaf076cb263bb61e00e4e094ad61b/transformed/work-runtime-2.8.1/AndroidManifest.xml:34:13-36:52
 MERGED from [androidx.work:work-runtime:2.8.1] /home/renzoasef/.gradle/caches/transforms-3/762eaf076cb263bb61e00e4e094ad61b/transformed/work-runtime-2.8.1/AndroidManifest.xml:34:13-36:52
 	android:value
-		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:46:17-49
+		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:59:17-49
 	android:name
-		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:45:17-68
+		ADDED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml:58:17-68
 uses-sdk
 INJECTED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml
@@ -307,10 +333,6 @@ MERGED from [androidx.print:print:1.0.0] /home/renzoasef/.gradle/caches/transfor
 		INJECTED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml
 	android:minSdkVersion
 		INJECTED from /home/renzoasef/Proyectos/cruci-track/mobile/app/src/main/AndroidManifest.xml
-uses-permission#android.permission.RECEIVE_BOOT_COMPLETED
-ADDED from [androidx.work:work-runtime:2.8.1] /home/renzoasef/.gradle/caches/transforms-3/762eaf076cb263bb61e00e4e094ad61b/transformed/work-runtime-2.8.1/AndroidManifest.xml:25:5-81
-	android:name
-		ADDED from [androidx.work:work-runtime:2.8.1] /home/renzoasef/.gradle/caches/transforms-3/762eaf076cb263bb61e00e4e094ad61b/transformed/work-runtime-2.8.1/AndroidManifest.xml:25:22-78
 service#androidx.work.impl.background.systemalarm.SystemAlarmService
 ADDED from [androidx.work:work-runtime:2.8.1] /home/renzoasef/.gradle/caches/transforms-3/762eaf076cb263bb61e00e4e094ad61b/transformed/work-runtime-2.8.1/AndroidManifest.xml:39:9-45:35
 	android:enabled
@@ -463,10 +485,6 @@ ADDED from [androidx.work:work-runtime:2.8.1] /home/renzoasef/.gradle/caches/tra
 		ADDED from [androidx.work:work-runtime:2.8.1] /home/renzoasef/.gradle/caches/transforms-3/762eaf076cb263bb61e00e4e094ad61b/transformed/work-runtime-2.8.1/AndroidManifest.xml:111:13-88
 intent-filter#action:name:android.intent.action.BOOT_COMPLETED+action:name:android.intent.action.TIMEZONE_CHANGED+action:name:android.intent.action.TIME_SET
 ADDED from [androidx.work:work-runtime:2.8.1] /home/renzoasef/.gradle/caches/transforms-3/762eaf076cb263bb61e00e4e094ad61b/transformed/work-runtime-2.8.1/AndroidManifest.xml:116:13-120:29
-action#android.intent.action.BOOT_COMPLETED
-ADDED from [androidx.work:work-runtime:2.8.1] /home/renzoasef/.gradle/caches/transforms-3/762eaf076cb263bb61e00e4e094ad61b/transformed/work-runtime-2.8.1/AndroidManifest.xml:117:17-79
-	android:name
-		ADDED from [androidx.work:work-runtime:2.8.1] /home/renzoasef/.gradle/caches/transforms-3/762eaf076cb263bb61e00e4e094ad61b/transformed/work-runtime-2.8.1/AndroidManifest.xml:117:25-76
 action#android.intent.action.TIME_SET
 ADDED from [androidx.work:work-runtime:2.8.1] /home/renzoasef/.gradle/caches/transforms-3/762eaf076cb263bb61e00e4e094ad61b/transformed/work-runtime-2.8.1/AndroidManifest.xml:118:17-73
 	android:name

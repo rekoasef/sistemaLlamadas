@@ -21,6 +21,13 @@ const HORA_FIN_COMERCIAL = 19
 /** Efficiency threshold below which an alert is triggered in reports. */
 export const UMBRAL_EFICIENCIA = 80
 
+/**
+ * Concesionario excluido del cálculo de eficiencia.
+ * "NUMERO SIN AGENDAR" representa llamadas de clientes externos (no concesionarios de la red).
+ * Estas llamadas no se deben atender por protocolo, por lo que no afectan la eficiencia.
+ */
+export const CONCESIONARIO_EXCLUIDO = 'NUMERO SIN AGENDAR'
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -75,13 +82,18 @@ export function formatDuracion(segundos: number | null): string {
  *   Eficiencia          = (Puntos Positivos / Total Interacciones) × 100
  */
 export function calcularKPIs(llamadas: LlamadaConConcesionario[]): KPIStats {
+  // Excluir llamadas de clientes externos ("NUMERO SIN AGENDAR") — no afectan eficiencia
+  const auditadas = llamadas.filter(
+    (ll) => ll.concesionarios?.nombre !== CONCESIONARIO_EXCLUIDO
+  )
+
   let entrantes = 0
   let salientes = 0
   let entrantesAtendidas = 0
   let entrantesPerdidas = 0
   let perdidasComerciales = 0
 
-  for (const ll of llamadas) {
+  for (const ll of auditadas) {
     const atendida = ll.estado?.toUpperCase() === 'ATENDIDA'
     const esComercial = ll.fecha_llamada ? isHorarioComercial(ll.fecha_llamada) : false
 
@@ -103,7 +115,7 @@ export function calcularKPIs(llamadas: LlamadaConConcesionario[]): KPIStats {
     totalInteracciones > 0 ? Math.round((puntosPositivos / totalInteracciones) * 100) : 0
 
   return {
-    total: llamadas.length,
+    total: auditadas.length,
     entrantes,
     salientes,
     atendidas: entrantesAtendidas,
@@ -177,7 +189,12 @@ export function calcularFugasPorConcesionario(
 ): FugaStats[] {
   const map = new Map<string, number>()
 
-  for (const ll of llamadas) {
+  // Excluir también de las fugas para no distorsionar el ranking
+  const auditadas = llamadas.filter(
+    (ll) => ll.concesionarios?.nombre !== CONCESIONARIO_EXCLUIDO
+  )
+
+  for (const ll of auditadas) {
     const estado = ll.estado?.toUpperCase() ?? ''
     const esComercial = ll.fecha_llamada ? isHorarioComercial(ll.fecha_llamada) : false
 
@@ -232,6 +249,46 @@ export function calcularFugasPorFranja(
 
     return { label, inicio, fin, perdidas, total, porcentaje }
   })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Daily Efficiency Trend
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface DiaEficiencia {
+  fecha: string    // YYYY-MM-DD
+  eficiencia: number  // -1 = sin datos
+  total: number
+}
+
+/**
+ * Compute per-day efficiency for the last N days.
+ * Days with no calls return eficiencia = -1 (no data — gap in chart).
+ * CONCESIONARIO_EXCLUIDO is filtered out via calcularKPIs.
+ */
+export function calcularEficienciaDiaria(
+  llamadas: LlamadaConConcesionario[],
+  dias = 30
+): DiaEficiencia[] {
+  const resultado: DiaEficiencia[] = []
+  const hoy = new Date()
+
+  for (let i = dias - 1; i >= 0; i--) {
+    const d = new Date(hoy)
+    d.setDate(d.getDate() - i)
+    const fechaStr = d.toISOString().slice(0, 10)
+
+    const enDia = llamadas.filter((ll) => ll.fecha_llamada?.slice(0, 10) === fechaStr)
+
+    if (enDia.length === 0) {
+      resultado.push({ fecha: fechaStr, eficiencia: -1, total: 0 })
+    } else {
+      const kpis = calcularKPIs(enDia)
+      resultado.push({ fecha: fechaStr, eficiencia: kpis.eficiencia, total: kpis.total })
+    }
+  }
+
+  return resultado
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

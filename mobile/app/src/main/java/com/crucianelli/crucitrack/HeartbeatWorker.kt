@@ -32,9 +32,11 @@ class HeartbeatWorker(appContext: Context, workerParams: WorkerParameters) :
             return Result.success()
         }
 
-        val tienePermisos = ContextCompat.checkSelfPermission(
-            applicationContext, Manifest.permission.READ_PHONE_STATE
-        ) == PackageManager.PERMISSION_GRANTED
+        val tienePermisos = listOf(
+            Manifest.permission.READ_PHONE_STATE,
+            Manifest.permission.READ_CALL_LOG,
+            Manifest.permission.PROCESS_OUTGOING_CALLS
+        ).all { ContextCompat.checkSelfPermission(applicationContext, it) == PackageManager.PERMISSION_GRANTED }
 
         val status = if (tienePermisos) "ONLINE" else "SIN_PERMISOS"
         Log.d("Heartbeat", "$status — terminal $deviceId")
@@ -68,7 +70,7 @@ class HeartbeatWorker(appContext: Context, workerParams: WorkerParameters) :
 
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
                 WORK_NAME,
-                ExistingPeriodicWorkPolicy.KEEP,
+                ExistingPeriodicWorkPolicy.UPDATE,
                 request
             )
             Log.d("Heartbeat", "Heartbeat periódico programado")

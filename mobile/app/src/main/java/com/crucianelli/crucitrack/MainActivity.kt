@@ -2,8 +2,12 @@ package com.crucianelli.crucitrack
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
+import android.os.PowerManager
+import android.provider.Settings
 import android.view.*
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
@@ -71,11 +75,29 @@ class MainActivity : AppCompatActivity() {
         HeartbeatWorker.schedule(this)
 
         if (tienePermisos()) {
-            // Ya tiene permisos → heartbeat inmediato
             HeartbeatWorker.sendNow(this)
         } else {
-            // Pedir permisos → el heartbeat se dispara en onRequestPermissionsResult
             ActivityCompat.requestPermissions(this, PERMISOS, 1)
+        }
+
+        requestBatteryOptimizationExemption()
+    }
+
+    private fun requestBatteryOptimizationExemption() {
+        val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+        if (!pm.isIgnoringBatteryOptimizations(packageName)) {
+            AlertDialog.Builder(this)
+                .setTitle("Optimización de batería")
+                .setMessage("Para detectar permisos revocados en tiempo real, Cruci Track necesita quedar exento de la optimización de batería.")
+                .setPositiveButton("Permitir") { _, _ ->
+                    startActivity(
+                        Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                            data = Uri.parse("package:$packageName")
+                        }
+                    )
+                }
+                .setNegativeButton("Ahora no", null)
+                .show()
         }
     }
 

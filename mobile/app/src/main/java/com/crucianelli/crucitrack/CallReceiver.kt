@@ -19,6 +19,9 @@ class CallReceiver : BroadcastReceiver() {
         val stateStr = intent.getStringExtra(TelephonyManager.EXTRA_STATE)
         
         if (stateStr == TelephonyManager.EXTRA_STATE_IDLE) {
+            // Actualiza terminal_status inmediatamente al terminar la llamada
+            HeartbeatWorker.sendNow(context)
+
             val pendingResult = goAsync()
             CoroutineScope(Dispatchers.IO).launch {
                 try {

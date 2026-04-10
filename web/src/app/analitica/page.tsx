@@ -11,6 +11,9 @@ import {
   calcularStatsPorTerminal,
   calcularStatsHorarias,
   calcularFugasPorConcesionario,
+  calcularEficienciaDiaria,
+  UMBRAL_EFICIENCIA,
+  type DiaEficiencia,
 } from '@/lib/kpi'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { SkeletonBarRow } from '@/components/ui/SkeletonCard'
@@ -56,6 +59,127 @@ const MiniCard = memo(function MiniCard({
         )}
       </div>
     </div>
+  )
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Line chart — 30-day efficiency trend
+// ─────────────────────────────────────────────────────────────────────────────
+
+const EficienciaLineChart = memo(function EficienciaLineChart({
+  data,
+}: {
+  data: DiaEficiencia[]
+}) {
+  const W = 900
+  const H = 200
+  const PAD = { top: 24, right: 32, bottom: 36, left: 44 }
+  const innerW = W - PAD.left - PAD.right
+  const innerH = H - PAD.top - PAD.bottom
+
+  const xScale = (i: number) =>
+    PAD.left + (data.length > 1 ? (i / (data.length - 1)) : 0.5) * innerW
+  const yScale = (v: number) => PAD.top + (1 - v / 100) * innerH
+  const umbralY = yScale(UMBRAL_EFICIENCIA)
+
+  // Build connected line segments (split at gaps where total === 0)
+  const segments: string[][] = []
+  let cur: string[] = []
+  for (let i = 0; i < data.length; i++) {
+    const d = data[i]
+    if (d.eficiencia >= 0) {
+      cur.push(`${xScale(i).toFixed(1)},${yScale(d.eficiencia).toFixed(1)}`)
+    } else if (cur.length > 0) {
+      segments.push(cur)
+      cur = []
+    }
+  }
+  if (cur.length > 0) segments.push(cur)
+
+  const yGrids = [0, 25, 50, 75, 100]
+
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      className="w-full"
+      style={{ height: 200 }}
+      preserveAspectRatio="xMidYMid meet"
+    >
+      <defs>
+        <linearGradient id="eficGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#dc2626" stopOpacity="0.25" />
+          <stop offset="100%" stopColor="#dc2626" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+
+      {/* Horizontal grid */}
+      {yGrids.map((v) => (
+        <g key={v}>
+          <line
+            x1={PAD.left} y1={yScale(v)}
+            x2={W - PAD.right} y2={yScale(v)}
+            stroke="#1f1f1f" strokeWidth="1"
+          />
+          <text
+            x={PAD.left - 6} y={yScale(v) + 4}
+            textAnchor="end" fill="#3f3f3f"
+            fontSize="9" fontFamily="monospace"
+          >
+            {v}%
+          </text>
+        </g>
+      ))}
+
+      {/* Umbral 80% */}
+      <line
+        x1={PAD.left} y1={umbralY}
+        x2={W - PAD.right} y2={umbralY}
+        stroke="#ca8a04" strokeWidth="1.2" strokeDasharray="5 4"
+      />
+      <text
+        x={W - PAD.right + 4} y={umbralY + 4}
+        fill="#ca8a04" fontSize="8" fontFamily="monospace"
+      >
+        {UMBRAL_EFICIENCIA}%
+      </text>
+
+      {/* Line segments */}
+      {segments.map((pts, si) => (
+        <path key={si} d={`M ${pts.join(' L ')}`} fill="none" stroke="#dc2626" strokeWidth="2" strokeLinejoin="round" />
+      ))}
+
+      {/* Data points */}
+      {data.map((d, i) => {
+        if (d.eficiencia < 0) return null
+        const cx = xScale(i)
+        const cy = yScale(d.eficiencia)
+        const ok = d.eficiencia >= UMBRAL_EFICIENCIA
+        return (
+          <g key={d.fecha}>
+            <circle cx={cx} cy={cy} r="4" fill={ok ? '#22c55e' : '#dc2626'} stroke="#0a0a0a" strokeWidth="1.5" />
+          </g>
+        )
+      })}
+
+      {/* X axis labels — every 5 days + last day */}
+      {data.map((d, i) => {
+        if (i % 5 !== 0 && i !== data.length - 1) return null
+        const fecha = new Date(`${d.fecha}T12:00:00`)
+        const label = fecha.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })
+        return (
+          <text key={d.fecha} x={xScale(i)} y={H - 4} textAnchor="middle" fill="#3f3f3f" fontSize="8" fontFamily="monospace">
+            {label}
+          </text>
+        )
+      })}
+
+      {/* X axis baseline */}
+      <line
+        x1={PAD.left} y1={H - PAD.bottom}
+        x2={W - PAD.right} y2={H - PAD.bottom}
+        stroke="#262626" strokeWidth="1"
+      />
+    </svg>
   )
 })
 
@@ -114,6 +238,12 @@ export default function AnaliticaPage() {
   /** Top-6 dealerships ranked by missed calls (commercial hours only). */
   const fugasPorConcesionario = useMemo<FugaStats[]>(
     () => calcularFugasPorConcesionario(llamadas),
+    [llamadas]
+  )
+
+  /** Day-by-day efficiency for the last 30 days. */
+  const eficienciaDiaria = useMemo<DiaEficiencia[]>(
+    () => calcularEficienciaDiaria(llamadas, 30),
     [llamadas]
   )
 
@@ -277,6 +407,67 @@ export default function AnaliticaPage() {
               <span>11:59 PM</span>
             </div>
           </div>
+        </div>
+
+        {/* 30-day efficiency trend */}
+        <div className="bg-neutral-900/40 border border-neutral-800 p-10 rounded-[3rem] shadow-2xl backdrop-blur-md hover:border-red-600/30 transition-all">
+          <div className="flex items-center justify-between gap-3 mb-8">
+            <div className="flex items-center gap-3">
+              <TrendingUp className="text-red-600" />
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-white italic">
+                Eficiencia — Últimos 30 Días
+              </h3>
+            </div>
+            <div className="flex items-center gap-5 text-[8px] font-black uppercase tracking-widest">
+              <span className="flex items-center gap-1.5 text-green-500">
+                <span className="w-2 h-2 rounded-full bg-green-500 inline-block" /> Sobre umbral
+              </span>
+              <span className="flex items-center gap-1.5 text-red-500">
+                <span className="w-2 h-2 rounded-full bg-red-600 inline-block" /> Bajo umbral
+              </span>
+              <span className="flex items-center gap-1.5 text-yellow-600">
+                <span className="w-4 border-t border-dashed border-yellow-600 inline-block" /> Umbral {UMBRAL_EFICIENCIA}%
+              </span>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="h-[200px] flex items-center justify-center">
+              <div className="w-8 h-8 border-2 border-red-600/30 border-t-red-600 rounded-full animate-spin" />
+            </div>
+          ) : (
+            <EficienciaLineChart data={eficienciaDiaria} />
+          )}
+
+          {/* Stats row below chart */}
+          {!loading && (
+            <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-neutral-800/50">
+              {(() => {
+                const conDatos = eficienciaDiaria.filter((d) => d.eficiencia >= 0)
+                const promedio = conDatos.length > 0
+                  ? Math.round(conDatos.reduce((s, d) => s + d.eficiencia, 0) / conDatos.length)
+                  : 0
+                const diasOk = conDatos.filter((d) => d.eficiencia >= UMBRAL_EFICIENCIA).length
+                const mejor = conDatos.length > 0 ? Math.max(...conDatos.map((d) => d.eficiencia)) : 0
+                return (
+                  <>
+                    <div className="text-center">
+                      <p className={`text-2xl font-black italic tracking-tighter ${promedio >= UMBRAL_EFICIENCIA ? 'text-green-400' : 'text-red-500'}`}>{promedio}%</p>
+                      <p className="text-[8px] text-neutral-700 font-black uppercase tracking-widest mt-1">Promedio 30d</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-black italic tracking-tighter text-white">{diasOk}<span className="text-neutral-600 text-sm">/{conDatos.length}</span></p>
+                      <p className="text-[8px] text-neutral-700 font-black uppercase tracking-widest mt-1">Días sobre umbral</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-black italic tracking-tighter text-green-400">{mejor}%</p>
+                      <p className="text-[8px] text-neutral-700 font-black uppercase tracking-widest mt-1">Mejor día</p>
+                    </div>
+                  </>
+                )
+              })()}
+            </div>
+          )}
         </div>
 
         {/* Missed calls ranking */}

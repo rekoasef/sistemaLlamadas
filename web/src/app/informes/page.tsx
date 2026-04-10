@@ -19,6 +19,18 @@ import { DESTINATARIOS_DEFAULT } from '@/lib/email-config'
 import type { Reporte, FranjaPerdidas } from '@/types/domain'
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Date helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Safely format a YYYY-MM-DD string (or null) for display in es-AR locale. */
+function fmtFechaRango(raw: string | null | undefined): string {
+  if (!raw) return '—'
+  const d = new Date(`${raw}T12:00:00`)
+  if (isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Scroll-lock hook
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -240,7 +252,7 @@ const DocumentViewer = memo(function DocumentViewer({
     setSendStatus('idle')
     try {
       const pdfBase64 = exportarReportePDFComoBase64(reporte)
-      const periodo = `${new Date(reporte.rango_inicio + 'T12:00:00').toLocaleDateString('es-AR')} — ${new Date(reporte.rango_fin + 'T12:00:00').toLocaleDateString('es-AR')}`
+      const periodo = `${fmtFechaRango(reporte.rango_inicio)} — ${fmtFechaRango(reporte.rango_fin)}`
       const res = await fetch('/api/send-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -310,11 +322,11 @@ const DocumentViewer = memo(function DocumentViewer({
                     <div className="flex items-center gap-2 text-neutral-500">
                       <Calendar size={13} className="text-neutral-700" />
                       <span className="text-[10px] font-black uppercase tracking-widest font-mono">
-                        {new Date(reporte.rango_inicio + 'T12:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                        {fmtFechaRango(reporte.rango_inicio)}
                       </span>
                       <span className="text-neutral-700">—</span>
                       <span className="text-[10px] font-black uppercase tracking-widest font-mono">
-                        {new Date(reporte.rango_fin + 'T12:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                        {fmtFechaRango(reporte.rango_fin)}
                       </span>
                     </div>
 
@@ -697,7 +709,7 @@ const ReporteCard = memo(function ReporteCard({ reporte, onOpen, onDelete }: Rep
       <div className="flex items-center gap-2 text-neutral-700 mb-7 relative z-10">
         <Calendar size={10} />
         <p className="text-[9px] font-mono uppercase tracking-widest">
-          {new Date(reporte.rango_inicio + 'T12:00:00').toLocaleDateString('es-AR')} — {new Date(reporte.rango_fin + 'T12:00:00').toLocaleDateString('es-AR')}
+          {fmtFechaRango(reporte.rango_inicio)} — {fmtFechaRango(reporte.rango_fin)}
         </p>
       </div>
 
