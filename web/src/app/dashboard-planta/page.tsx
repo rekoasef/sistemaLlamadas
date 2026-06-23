@@ -348,7 +348,15 @@ const ConcesionarioRow = memo(function ConcesionarioRow({
           />
         </div>
       </div>
-      <span className="text-white font-black italic text-base w-7 text-right shrink-0">{item.total}</span>
+      {/* Total + breakdown atendidas (verde) / perdidas (rojo) */}
+      <div className="flex flex-col items-end shrink-0">
+        <span className="text-white font-black italic text-base leading-none">{item.total}</span>
+        <div className="flex items-center gap-1 mt-0.5">
+          <span className="text-green-400 text-[9px] font-black leading-none">{item.atendidas}</span>
+          <span className="text-neutral-600 text-[8px] leading-none">·</span>
+          <span className="text-red-500 text-[9px] font-black leading-none">{item.perdidas}</span>
+        </div>
+      </div>
     </div>
   )
 })
@@ -649,7 +657,7 @@ export default function DashboardPlantaPage() {
                   </div>
                 ) : topConces.length === 0 ? (
                   <p className="text-neutral-700 text-[10px] font-black uppercase italic text-center mt-8">
-                    Sin llamadas entrantes
+                    Sin llamadas registradas
                   </p>
                 ) : (
                   topConces.map((c, i) => (

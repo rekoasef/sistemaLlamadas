@@ -41,12 +41,16 @@ export interface TerminalRanking {
 
 /**
  * Per-dealership call volume for the Top-N ranking widget.
- * Counts ALL incoming calls (answered or not) to rank by traffic volume.
+ * Counts ALL calls (incoming + outgoing) to rank by traffic volume.
  */
 export interface ConcesionarioRanking {
   nombre: string
-  /** Total incoming calls from this dealership today */
+  /** Total calls (entrantes + salientes) from/to this dealership */
   total: number
+  /** Calls with estado === 'ATENDIDA' */
+  atendidas: number
+  /** Calls with estado !== 'ATENDIDA' */
+  perdidas: number
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -149,10 +153,10 @@ export function calcularRankingTerminales(
 }
 
 /**
- * Rank dealerships by total incoming call volume today.
+ * Rank dealerships by total call volume (entrantes + salientes).
  *
  * Unlike `calcularFugasPorConcesionario` (which ranks by MISSED calls),
- * this ranks by TOTAL entrantes — more appropriate for a traffic-volume
+ * this ranks by TOTAL interactions — more appropriate for a traffic-volume
  * leaderboard on the wallboard.
  *
  * @param llamadas - All today's calls.
@@ -162,16 +166,26 @@ export function calcularTopConcesionarios(
   llamadas: LlamadaConConcesionario[],
   top = 10
 ): ConcesionarioRanking[] {
-  const map = new Map<string, number>()
+  const map = new Map<string, { atendidas: number; perdidas: number }>()
 
   for (const ll of llamadas) {
-    if (!esLlamadaEntrante(ll.tipo_llamada)) continue
     const nombre = ll.concesionarios?.nombre ?? 'SIN VINCULAR'
-    map.set(nombre, (map.get(nombre) ?? 0) + 1)
+    if (!map.has(nombre)) map.set(nombre, { atendidas: 0, perdidas: 0 })
+    const entry = map.get(nombre)!
+    if (ll.estado?.toUpperCase() === 'ATENDIDA') {
+      entry.atendidas++
+    } else {
+      entry.perdidas++
+    }
   }
 
   return Array.from(map.entries())
-    .map(([nombre, total]) => ({ nombre, total }))
+    .map(([nombre, { atendidas, perdidas }]) => ({
+      nombre,
+      total: atendidas + perdidas,
+      atendidas,
+      perdidas,
+    }))
     .sort((a, b) => b.total - a.total)
     .slice(0, top)
 }
