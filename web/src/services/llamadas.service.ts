@@ -1,5 +1,10 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import type { Database } from '@/types/supabase'
 import type { LlamadaConConcesionario, FiltroLlamadas } from '@/types/domain'
+
+/** Ver la nota en reportes.service: los crons inyectan el cliente service-role. */
+type Client = SupabaseClient<Database>
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Internal helpers
@@ -104,9 +109,10 @@ export async function fetchLlamadaById(
  */
 export async function fetchLlamadasByRange(
   fechaInicio: string,
-  fechaFin: string
+  fechaFin: string,
+  client: Client = supabase
 ): Promise<LlamadaConConcesionario[]> {
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from('llamadas')
     .select('*, concesionarios:concesionario_id (nombre, provincia, ciudad, latitud, longitud)')
     .gte('fecha_llamada', `${fechaInicio}T00:00:00`)

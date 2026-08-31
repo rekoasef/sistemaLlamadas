@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { fetchLlamadasByRange } from '@/services/llamadas.service'
 import { insertReporte } from '@/services/reportes.service'
+import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { calcularKPIs, generarResumenEjecutivo, calcularFugasPorFranja } from '@/lib/kpi'
 import { calcularTopConcesionarios } from '@/lib/wallboard'
 import { exportarReportePDFComoBase64 } from '@/lib/pdf'
@@ -24,6 +25,10 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    // Los crons corren sin sesión: con el cliente compartido serían rol `anon`
+    // y RLS rechazaría el insert del reporte con 42501.
+    const db = getSupabaseAdmin()
+
     // Compute last week (Mon–Sun)
     const hoy = new Date()
     const diaSemana = hoy.getDay() // 0=Dom, 1=Lun, ..., 5=Vie
@@ -46,7 +51,7 @@ export async function GET(req: NextRequest) {
     const titulo = `REPORTE SEMANAL — SEMANA ${weekNum} ${lunesAnterior.getFullYear()}`
 
     // Fetch and compute
-    const llamadas = await fetchLlamadasByRange(fechaInicio, fechaFin)
+    const llamadas = await fetchLlamadasByRange(fechaInicio, fechaFin, db)
     const kpis = calcularKPIs(llamadas)
     const franjas = calcularFugasPorFranja(llamadas)
     const topConcesionarios = calcularTopConcesionarios(llamadas, 10)
@@ -68,7 +73,7 @@ export async function GET(req: NextRequest) {
       },
       resumen_escrito: resumen,
       tipo: 'AUTOMATICO',
-    })
+    }, db)
 
     // Generate PDF and send email
     const reporteParaPDF = {

@@ -1,6 +1,6 @@
 # Cruci-Track — Knowledge Base Técnica
 
-> **Versión:** 2.1 · **Última actualización:** 2026-03-17
+> **Versión:** 2.2 · **Última actualización:** 2026-08-26
 > **Stack:** Next.js 13.5 (App Router) · TypeScript · Tailwind CSS · Supabase (PostgreSQL + Realtime)
 
 ---
@@ -17,6 +17,7 @@
 8. [Automatización (pg_cron)](#8-automatización-pg_cron)
 9. [Guía de Onboarding](#9-guía-de-onboarding)
 10. [FAQ & Troubleshooting](#10-faq--troubleshooting)
+11. [RLS y Clientes Supabase](#11-rls-y-clientes-supabase)
 
 ---
 
@@ -100,6 +101,11 @@ Browser                   Next.js Edge              Supabase Auth
 | `src/lib/supabase-browser.ts`    | Cliente Supabase para Client Components (`@supabase/ssr`)    |
 | `src/app/login/page.tsx`         | Formulario de login (solo email + password)                  |
 | `src/components/Sidebar.tsx`     | Botón de logout — llama `supabase.auth.signOut()`            |
+| `src/lib/supabase.ts`            | Cliente de **datos**; en browser lee la sesión de cookies    |
+| `src/lib/supabase-admin.ts`      | Cliente **service-role**, SOLO servidor (crons)              |
+
+> ⚠️ Ver [§11 RLS y Clientes Supabase](#11-rls-y-clientes-supabase): elegir el cliente
+> equivocado es la causa raíz del error `42501` en todas las escrituras.
 
 ### Reglas del Middleware
 
@@ -486,3 +492,87 @@ Este error ocurre si se llama `createSupabaseServerClient()` fuera de un Server 
 
 *Documentación generada por el equipo de ingeniería de Cruci-Track.*
 *Para actualizaciones o correcciones, abrir un issue en el repositorio.*
+
+---
+
+## 11. RLS y Clientes Supabase
+
+> Añadido 2026-08-26 a raíz del bug "Error al procesar la vinculación".
+
+### El problema que resuelve
+
+Todas las tablas tienen RLS activo con políticas de **SELECT abiertas a `anon`** pero
+**INSERT/UPDATE restringidas**. Si una query sale con el rol `anon`, las lecturas
+funcionan y las escrituras fallan con:
+
+```
+401 {"code":"42501","message":"new row violates row-level security policy for table \"<tabla>\""}
+```
+
+Es un error engañoso: la pantalla carga bien (lecturas OK) y solo revienta al guardar.
+
+Confirmado empíricamente el 2026-08-26 sobre el proyecto `luohkbuyzxcgtbuehjup`:
+`concesionario_telefonos`, `concesionarios`, `dispositivo_alias` y `reportes_generados`
+devuelven las cuatro `42501` en INSERT como `anon`.
+
+### Los tres clientes
+
+| Cliente | Archivo | Rol efectivo | Cuándo usarlo |
+|---------|---------|--------------|---------------|
+| **Datos (browser)** | `src/lib/supabase.ts` | `authenticated` | Todo el UI. Usa `createBrowserClient` de `@supabase/ssr`, que lee la sesión de las cookies del login. |
+| **Auth** | `src/lib/supabase-browser.ts` | `authenticated` | Solo flujos de auth: `signIn`, `signOut`, `getUser`. |
+| **Service role** | `src/lib/supabase-admin.ts` | bypass de RLS | Solo servidor sin sesión: route handlers de cron. **Nunca** importar desde un Client Component. |
+
+`src/lib/supabase.ts` hace un switch por entorno: en el browser devuelve
+`createBrowserClient` (sesión en cookies); en el servidor cae al cliente `anon` plano,
+porque `createBrowserClient` depende de `document.cookie` y los route handlers lo
+importan de forma transitiva vía la capa de servicios.
+
+### Regla para la capa de servicios
+
+Las funciones que los crons reutilizan aceptan un cliente opcional como último
+parámetro, con default al compartido:
+
+```typescript
+export async function insertReporte(
+  payload: ReporteInsert,
+  client: Client = supabase   // los crons pasan getSupabaseAdmin()
+): Promise<void>
+```
+
+Aplicado hoy en `insertReporte()` y `fetchLlamadasByRange()`. Si mañana otro cron
+necesita una función de servicio, seguir el mismo patrón en vez de duplicar queries.
+
+### Variables de entorno
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=...        # público
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...   # público
+SUPABASE_SERVICE_ROLE_KEY=...       # SECRETO — sin prefijo NEXT_PUBLIC_
+```
+
+`SUPABASE_SERVICE_ROLE_KEY` hace bypass total de RLS. El prefijo `NEXT_PUBLIC_` la
+inyectaría en el bundle del cliente y quedaría expuesta a cualquier visitante.
+Debe estar cargada tanto en `.env.local` como en las env vars de Vercel
+(Production + Preview), o los crons fallan con un error explícito de key faltante.
+
+Para verificar que no se filtró al bundle tras un build:
+
+```bash
+grep -rl "SUPABASE_SERVICE_ROLE_KEY\|supabase-admin" .next/static   # debe salir vacío
+```
+
+### Cómo diagnosticar un 42501
+
+```bash
+# Reproduce un INSERT como anon SIN escribir nada (FK inexistente → falla igual)
+curl -s -X POST "$URL/rest/v1/<tabla>" \
+  -H "apikey: $ANON_KEY" -H "Authorization: Bearer $ANON_KEY" \
+  -H "Content-Type: application/json" \
+  -d '[{"<fk>":"00000000-0000-0000-0000-000000000000"}]'
+```
+
+- `42501` → RLS. El cliente sale como `anon`, o la policy de INSERT no existe.
+- `23503` (FK violation) → RLS pasó; el problema es otro.
+
+---

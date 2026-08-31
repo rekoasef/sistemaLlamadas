@@ -62,9 +62,13 @@ export default function ModalVincular({ numero, onClose, onSuccess }: Props) {
       if (error) throw error
       onSuccess()
       onClose()
-    } catch (err) {
-      console.error("Error:", err)
-      alert("Error al procesar la vinculación.")
+    } catch (err: any) {
+      console.error("Error al vincular:", err)
+      if (err?.code === '42501') {
+        alert("No tenés permisos para vincular (RLS). Verificá que tu sesión siga activa e iniciá sesión de nuevo.")
+      } else {
+        alert("Error al procesar la vinculación: " + (err?.message || "consulte el log"))
+      }
     } finally {
       setLoading(false)
       setConfirmingAction(null)

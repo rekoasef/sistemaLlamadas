@@ -1,6 +1,14 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
-import type { Json } from '@/types/supabase'
+import type { Database, Json } from '@/types/supabase'
 import type { Reporte, ReporteInsert } from '@/types/domain'
+
+/**
+ * Cliente a usar para la query. Por defecto el compartido (browser, con la
+ * sesión del usuario). Los crons pasan el cliente service-role, porque corren
+ * sin sesión y RLS los rechazaría.
+ */
+type Client = SupabaseClient<Database>
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Service functions
@@ -25,12 +33,15 @@ export async function fetchReportes(): Promise<Reporte[]> {
  * Accepts the domain-typed ReporteInsert so call sites work with ReporteMetricas
  * directly. The Json cast is isolated here at the service boundary.
  */
-export async function insertReporte(payload: ReporteInsert): Promise<void> {
+export async function insertReporte(
+  payload: ReporteInsert,
+  client: Client = supabase
+): Promise<void> {
   const dbPayload = {
     ...payload,
     metricas: (payload.metricas ?? null) as Json | null,
   }
-  const { error } = await supabase.from('reportes_generados').insert([dbPayload])
+  const { error } = await client.from('reportes_generados').insert([dbPayload])
   if (error) throw new Error(`[reportes.service] insertReporte: ${error.message}`)
 }
 
