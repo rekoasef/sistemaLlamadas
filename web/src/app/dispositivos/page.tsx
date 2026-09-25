@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { fetchAllPages } from '@/lib/paginate'
 import { Monitor, Edit3, Save, X, Activity, Smartphone, WifiOff, ShieldAlert, History, ArrowRight } from 'lucide-react'
 
 const ONLINE_THRESHOLD_MS  = 45 * 60 * 1000      // < 45 min → En línea
@@ -196,11 +197,12 @@ export default function DispositivosPage() {
   const fetchData = useCallback(async () => {
     setLoading(true)
 
-    const { data: llamadas } = await supabase
-      .from('llamadas')
-      .select('dispositivo_id')
+    const llamadas = await fetchAllPages<{ dispositivo_id: string }>(
+      () => supabase.from('llamadas').select('dispositivo_id').order('id'),
+      '[dispositivos] llamadas'
+    ).catch((err) => { console.error(err); return [] })
 
-    const uniqueIds = Array.from(new Set(llamadas?.map(l => l.dispositivo_id)))
+    const uniqueIds = Array.from(new Set(llamadas.map(l => l.dispositivo_id)))
 
     const { data: aliasData } = await supabase
       .from('dispositivo_alias')

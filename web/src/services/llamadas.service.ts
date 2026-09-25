@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import { fetchAllPages } from '@/lib/paginate'
 import type { Database } from '@/types/supabase'
 import type { LlamadaConConcesionario, FiltroLlamadas } from '@/types/domain'
 
@@ -60,30 +61,25 @@ function buildDateRange(
 // Public service functions
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Row limit for the dashboard fetch — high enough to cover all current records,
- *  small enough to keep realtime payloads fast. Raise as the dataset grows. */
-const DASHBOARD_ROW_LIMIT = 2000
-
 /**
- * Fetch calls matching the current dashboard filter.
- * Bounded by DASHBOARD_ROW_LIMIT to keep the realtime refresh payload fast.
+ * Fetch every call matching the current dashboard filter (paginated, no cap).
  * The concesionario join is a lightweight FK lookup, not a full scan.
  */
 export async function fetchLlamadas(
   filtro: FiltroLlamadas
 ): Promise<LlamadaConConcesionario[]> {
-  let query = supabase
-    .from('llamadas')
-    .select('*, concesionarios:concesionario_id (nombre, provincia, ciudad, latitud, longitud)')
-    .order('fecha_llamada', { ascending: false })
-
   const range = buildDateRange(filtro)
-  if (range.gte) query = query.gte('fecha_llamada', range.gte)
-  if (range.lte) query = query.lte('fecha_llamada', range.lte)
 
-  const { data, error } = await query.limit(DASHBOARD_ROW_LIMIT)
-  if (error) throw new Error(`[llamadas.service] fetchLlamadas: ${error.message}`)
-  return (data as LlamadaConConcesionario[]) ?? []
+  return fetchAllPages<LlamadaConConcesionario>(() => {
+    let query = supabase
+      .from('llamadas')
+      .select('*, concesionarios:concesionario_id (nombre, provincia, ciudad, latitud, longitud)')
+    if (range.gte) query = query.gte('fecha_llamada', range.gte)
+    if (range.lte) query = query.lte('fecha_llamada', range.lte)
+    return query
+      .order('fecha_llamada', { ascending: false })
+      .order('id', { ascending: false })
+  }, '[llamadas.service] fetchLlamadas')
 }
 
 /**
@@ -112,14 +108,16 @@ export async function fetchLlamadasByRange(
   fechaFin: string,
   client: Client = supabase
 ): Promise<LlamadaConConcesionario[]> {
-  const { data, error } = await client
-    .from('llamadas')
-    .select('*, concesionarios:concesionario_id (nombre, provincia, ciudad, latitud, longitud)')
-    .gte('fecha_llamada', `${fechaInicio}T00:00:00`)
-    .lte('fecha_llamada', `${fechaFin}T23:59:59`)
-
-  if (error) throw new Error(`[llamadas.service] fetchLlamadasByRange: ${error.message}`)
-  return (data as LlamadaConConcesionario[]) ?? []
+  return fetchAllPages<LlamadaConConcesionario>(() =>
+    client
+      .from('llamadas')
+      .select('*, concesionarios:concesionario_id (nombre, provincia, ciudad, latitud, longitud)')
+      .gte('fecha_llamada', `${fechaInicio}T00:00:00`)
+      .lte('fecha_llamada', `${fechaFin}T23:59:59`)
+      .order('fecha_llamada', { ascending: false })
+      .order('id', { ascending: false }),
+    '[llamadas.service] fetchLlamadasByRange'
+  )
 }
 
 /**
@@ -134,15 +132,16 @@ export async function fetchLlamadasHoy(): Promise<LlamadaConConcesionario[]> {
   const gte = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).toISOString()
   const lte = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString()
 
-  const { data, error } = await supabase
-    .from('llamadas')
-    .select('*, concesionarios:concesionario_id (nombre, provincia, ciudad, latitud, longitud)')
-    .gte('fecha_llamada', gte)
-    .lte('fecha_llamada', lte)
-    .order('fecha_llamada', { ascending: false })
-
-  if (error) throw new Error(`[llamadas.service] fetchLlamadasHoy: ${error.message}`)
-  return (data as LlamadaConConcesionario[]) ?? []
+  return fetchAllPages<LlamadaConConcesionario>(() =>
+    supabase
+      .from('llamadas')
+      .select('*, concesionarios:concesionario_id (nombre, provincia, ciudad, latitud, longitud)')
+      .gte('fecha_llamada', gte)
+      .lte('fecha_llamada', lte)
+      .order('fecha_llamada', { ascending: false })
+      .order('id', { ascending: false }),
+    '[llamadas.service] fetchLlamadasHoy'
+  )
 }
 
 /**
@@ -150,12 +149,14 @@ export async function fetchLlamadasHoy(): Promise<LlamadaConConcesionario[]> {
  * This is acceptable for the BI page since it's not on the realtime path.
  */
 export async function fetchTodasLasLlamadas(): Promise<LlamadaConConcesionario[]> {
-  const { data, error } = await supabase
-    .from('llamadas')
-    .select('*, concesionarios:concesionario_id (nombre, provincia, ciudad, latitud, longitud)')
-
-  if (error) throw new Error(`[llamadas.service] fetchTodasLasLlamadas: ${error.message}`)
-  return (data as LlamadaConConcesionario[]) ?? []
+  return fetchAllPages<LlamadaConConcesionario>(() =>
+    supabase
+      .from('llamadas')
+      .select('*, concesionarios:concesionario_id (nombre, provincia, ciudad, latitud, longitud)')
+      .order('fecha_llamada', { ascending: false })
+      .order('id', { ascending: false }),
+    '[llamadas.service] fetchTodasLasLlamadas'
+  )
 }
 
 /** Range options available on the wallboard selector. */
@@ -181,14 +182,15 @@ export async function fetchLlamadasWallboard(
   }
   gte.setHours(0, 0, 0, 0)
 
-  const { data, error } = await supabase
-    .from('llamadas')
-    .select('*, concesionarios:concesionario_id (nombre, provincia, ciudad, latitud, longitud)')
-    .gte('fecha_llamada', gte.toISOString())
-    .order('fecha_llamada', { ascending: false })
-
-  if (error) throw new Error(`[llamadas.service] fetchLlamadasWallboard: ${error.message}`)
-  return (data as LlamadaConConcesionario[]) ?? []
+  return fetchAllPages<LlamadaConConcesionario>(() =>
+    supabase
+      .from('llamadas')
+      .select('*, concesionarios:concesionario_id (nombre, provincia, ciudad, latitud, longitud)')
+      .gte('fecha_llamada', gte.toISOString())
+      .order('fecha_llamada', { ascending: false })
+      .order('id', { ascending: false }),
+    '[llamadas.service] fetchLlamadasWallboard'
+  )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

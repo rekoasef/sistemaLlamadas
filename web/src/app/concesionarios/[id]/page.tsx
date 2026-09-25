@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { fetchAllPages } from '@/lib/paginate'
 import { 
   ChevronLeft, PhoneIncoming, PhoneOutgoing, 
   Activity, Zap, Phone, Calendar,
@@ -40,35 +41,41 @@ export default function ConcesionarioDetalle() {
       .eq('id', Array.isArray(id) ? id[0] : id)
       .single()
 
-    // 2. Construir query de llamadas [cite: 74, 97]
-    let query = supabase
-      .from('llamadas')
-      .select('*')
-      .eq('concesionario_id', Array.isArray(id) ? id[0] : id)
+    // 2. Calcular el rango de fechas [cite: 74, 97]
+    let gte: string | undefined
+    let lte: string | undefined
 
     if (!usarCalendario) {
       const ahora = new Date()
       if (periodo === 'dia') {
-        const hoy = new Date(ahora.setHours(0,0,0,0)).toISOString()
-        query = query.gte('fecha_llamada', hoy)
+        gte = new Date(ahora.setHours(0,0,0,0)).toISOString()
       } else if (periodo === 'semana') {
-        const haceSieteDias = new Date(ahora.setDate(ahora.getDate() - 7)).toISOString()
-        query = query.gte('fecha_llamada', haceSieteDias)
+        gte = new Date(ahora.setDate(ahora.getDate() - 7)).toISOString()
       } else if (periodo === 'mes') {
-        const haceUnMes = new Date(ahora.setMonth(ahora.getMonth() - 1)).toISOString()
-        query = query.gte('fecha_llamada', haceUnMes)
+        gte = new Date(ahora.setMonth(ahora.getMonth() - 1)).toISOString()
       }
     } else {
       if (fechaEspecifica) {
-        query = query.gte('fecha_llamada', `${fechaEspecifica}T00:00:00`).lte('fecha_llamada', `${fechaEspecifica}T23:59:59`)
+        gte = `${fechaEspecifica}T00:00:00`
+        lte = `${fechaEspecifica}T23:59:59`
       } else {
-        const inicio = new Date(anioSeleccionado, mesSeleccionado - 1, 1).toISOString()
-        const fin = new Date(anioSeleccionado, mesSeleccionado, 0, 23, 59, 59).toISOString()
-        query = query.gte('fecha_llamada', inicio).lte('fecha_llamada', fin)
+        gte = new Date(anioSeleccionado, mesSeleccionado - 1, 1).toISOString()
+        lte = new Date(anioSeleccionado, mesSeleccionado, 0, 23, 59, 59).toISOString()
       }
     }
 
-    const { data: calls } = await query.order('fecha_llamada', { ascending: false })
+    // 3. Traer todas las llamadas del rango, paginando (Supabase corta en 1000)
+    const calls = await fetchAllPages<any>(() => {
+      let query = supabase
+        .from('llamadas')
+        .select('*')
+        .eq('concesionario_id', Array.isArray(id) ? id[0] : id)
+      if (gte) query = query.gte('fecha_llamada', gte)
+      if (lte) query = query.lte('fecha_llamada', lte)
+      return query
+        .order('fecha_llamada', { ascending: false })
+        .order('id', { ascending: false })
+    }, '[concesionario] llamadas').catch((err) => { console.error(err); return [] })
 
     setConcesionario(info)
     setLlamadas(calls || [])

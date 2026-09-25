@@ -151,7 +151,7 @@ export default function DashboardPage() {
               next[idx] = fullRow
               return next
             }
-            return [fullRow, ...prev].slice(0, 200)
+            return [fullRow, ...prev]
           })
         }
       )
