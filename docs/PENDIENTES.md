@@ -114,29 +114,18 @@ Misma función, `ModalVincular.tsx:39`. Si el número ya está duplicado en la t
 `.maybeSingle()` devuelve error en vez de fila, `data` queda `null`, el chequeo pasa
 y se inserta un tercer duplicado. Depende del bug 1.
 
-### 3. El dashboard recorta la lista a 200 registros con el tiempo
+### 3. ~~El dashboard recorta la lista a 200 registros con el tiempo~~ — arreglado
 
-**Síntoma (reportado por el usuario):** el panel arranca mostrando los ~900+ registros,
-pero después de un rato baja a 200. Recargando la página vuelve a la normalidad.
+Arreglado el 2026-09-25 (`72a6720`). Había dos topes:
 
-**Causa (identificada, sin arreglar):** `web/src/app/page.tsx:154`
-
-```typescript
-return [fullRow, ...prev].slice(0, 200)
-```
-
-El handler de realtime, cada vez que llega una llamada **nueva** (no un update),
-antepone la fila y trunca el array a 200. La carga inicial trae hasta 2000
-(`DASHBOARD_ROW_LIMIT`, `llamadas.service.ts:65`), así que la lista completa sobrevive
-hasta el primer INSERT por realtime — ahí se recorta y se queda en 200. El reload
-vuelve a hacer el fetch completo, por eso "se arregla solo".
-
-"Pasa mucho tiempo" = tiempo suficiente para que entre al menos una llamada nueva.
-
-**A decidir mañana:** el `200` parece un tope de seguridad para el payload de realtime,
-pero está desalineado con el `DASHBOARD_ROW_LIMIT = 2000` del fetch inicial. Lo más
-probable es que deba usar la misma constante. Ojo que el recorte también falsea los
-KPIs: `stats` se calcula sobre `filtradas`, que sale de `llamadasRaw` ya truncado.
+- El handler de realtime en `web/src/app/page.tsx` hacía `[fullRow, ...prev].slice(0, 200)`
+  en cada INSERT, así que la lista bajaba a 200 después de la primera llamada nueva
+  (y los KPIs se calculaban sobre la lista truncada). Se sacó el `slice`.
+- Supabase (PostgREST `max_rows`) devuelve como máximo 1000 filas por request, aunque
+  se pida `.limit(2000)` — por eso el dashboard mostraba ~997. Ahora todas las queries
+  a `llamadas` que necesitan el dataset completo paginan con `fetchAllPages`
+  (`web/src/lib/paginate.ts`): dashboard, wallboard, reportes/crons, `dispositivos` y
+  el detalle de concesionario.
 
 ---
 
