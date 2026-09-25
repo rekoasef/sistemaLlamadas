@@ -1,7 +1,7 @@
 # Cruci-Track — Pendientes
 
 > Última actualización: 2026-08-31
-> Próxima sesión: revisión de código y caza de bugs.
+> Próxima sesión: 2026-09-01 — revisión de código para mejorar la plataforma.
 
 ---
 
@@ -29,6 +29,31 @@ Detalle técnico completo en [`KB.md` §11 — RLS y Clientes Supabase](./KB.md#
 
 `npx tsc --noEmit` y `npx next build` pasan. Verificado que la service-role key no
 entra al bundle del cliente.
+
+---
+
+## Por qué "antes andaba y ahora no"
+
+Respondido el 2026-08-31 con el MCP. **El código no se tocó: cambió la base.**
+
+La migración `20260623155736_enable_rls_and_policies`, aplicada desde el dashboard el
+**2026-06-23 15:57 UTC**, empieza con `-- Enable RLS on all 6 unprotected tables`. Hasta
+ese momento `concesionarios`, `concesionario_telefonos`, `dispositivo_alias`,
+`reportes_generados`, `terminal_status` y `terminal_status_history` tenían RLS **apagado**:
+sin RLS no había nada que chequear y el cliente `anon` escribía sin problema. El bug del
+cliente sin sesión existía desde siempre, pero estaba dormido.
+
+Llegó en un lote de 4 migraciones en 2 minutos (`fix_functions_search_path_and_security`,
+`enable_rls_and_policies`, `fix_security_definer_view`, `revoke_trigger_functions_from_public`):
+es el set de remediación del **Security Advisor** de Supabase. Los cambios estaban bien;
+el efecto colateral fue romper todas las escrituras de la web.
+
+**Alcance:** desde el 2026-06-23 no entró ni un concesionario nuevo (0 filas con
+`created_at` posterior; el último es del 2026-04-29). Toda escritura desde la web falló
+en silencio durante ~2 meses.
+
+**Lección:** ninguna de esas 4 migraciones está en `supabase/migrations/` — ver deuda nº5.
+Si hubieran pasado por el repo, el cambio de RLS se habría visto en un diff.
 
 ---
 
@@ -115,15 +140,13 @@ KPIs: `stats` se calcula sobre `filtradas`, que sale de `llamadasRaw` ya truncad
 
 ---
 
-### 4. `llamadas` no tiene policy de UPDATE
+### 4. ~~`llamadas` no tiene policy de UPDATE~~ — descartado
 
-Detectado el 2026-08-31 con el MCP. `llamadas` tiene RLS activo y solo dos policies:
-SELECT para `public`/`anon` e INSERT para `anon` (la app mobile). **No hay UPDATE.**
-Hoy no rompe nada porque vincular escribe en `concesionario_telefonos`, no en `llamadas`.
-Pero la columna `llamadas.concesionario_id` existe con FK a `concesionarios`, así que si
-alguna vez se intenta setear desde la app, el UPDATE va a afectar **0 filas sin tirar
-error** — el modo de falla más difícil de diagnosticar. Decidir si esa columna se usa;
-si se usa, hace falta la policy.
+Verificado el 2026-08-31: **no es un problema.** El UPDATE de `llamadas.concesionario_id`
+lo hace el trigger `tr_limpiar_historial_numero` sobre `concesionario_telefonos`, cuya
+función `limpiar_historial_por_nuevo_numero()` es `SECURITY DEFINER` y pertenece a
+`postgres` (`rolbypassrls = true`). Saltea RLS, así que no necesita policy. Es el trigger
+que retro-vincula las llamadas históricas al agregar un número a la agenda.
 
 ---
 
