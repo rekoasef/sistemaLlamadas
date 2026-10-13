@@ -1,12 +1,8 @@
 package com.crucianelli.crucitrack
 
 import com.google.gson.annotations.SerializedName
-import java.text.SimpleDateFormat
-import java.util.*
 
+/** El servidor deduce la terminal del token y usa su propia hora como last_seen. */
 data class HeartbeatRequest(
-    @SerializedName("terminal_id") val terminalId: String,
-    @SerializedName("status")      val status: String = "ONLINE",
-    @SerializedName("last_seen")   val lastSeen: String =
-        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", Locale.getDefault()).format(Date())
+    @SerializedName("status") val status: String = "ONLINE"
 )

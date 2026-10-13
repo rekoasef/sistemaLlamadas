@@ -11,12 +11,12 @@ class SyncCallWorker(appContext: Context, workerParams: WorkerParameters) :
     CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
-        // Obtenemos los datos enviados desde el CallReceiver [cite: 67]
+        // Datos enviados desde el CallReceiver
+        val id = inputData.getString("id") ?: return Result.failure()
         val numero = inputData.getString("numero") ?: return Result.failure()
+        val fecha = inputData.getString("fecha") ?: return Result.failure()
         val tipo = inputData.getString("tipo")?.uppercase() ?: "ENTRANTE"
         val duracion = inputData.getInt("duracion", 0)
-        // Si el ID viene vacío, ponemos uno por defecto para que la DB no lo rechace [cite: 54, 87]
-        val dispositivoId = inputData.getString("dispositivoId") ?: "PUESTO_DESCONOCIDO"
         val estadoOriginal = inputData.getString("estado") ?: "PERDIDA"
 
         val estadoSincronizado = when (estadoOriginal.uppercase()) {
@@ -24,29 +24,39 @@ class SyncCallWorker(appContext: Context, workerParams: WorkerParameters) :
             else -> "PERDIDA"
         }
 
+        // Sin token no se puede subir: queda en cola hasta que se configure.
+        val auth = DeviceSettings.authHeader(applicationContext) ?: run {
+            Log.w("CRUCI_DEBUG", "Sin token configurado, reintentando más tarde")
+            return Result.retry()
+        }
+
         return try {
             val request = CallRequest(
+                id = id,
                 phoneNumber = numero,
                 type = tipo,
                 duration = duracion,
-                deviceId = dispositivoId,
-                status = estadoSincronizado
+                status = estadoSincronizado,
+                date = fecha
             )
 
-            // Intentamos la subida a Supabase [cite: 69, 81]
-            val response = RetrofitClient.apiService.uploadCall(
-                apiKey = SupabaseConfig.API_KEY,
-                bearer = "Bearer ${SupabaseConfig.API_KEY}",
-                call = request
-            )
+            val response = RetrofitClient.apiService.uploadCall(bearer = auth, call = request)
 
-            if (response.isSuccessful) {
-                Log.d("CRUCI_DEBUG", "Sincronización Exitosa")
-                Result.success()
-            } else {
-                // Si falla, pedimos reintento automático [cite: 71]
-                Log.e("CRUCI_DEBUG", "Error servidor: ${response.code()}")
-                Result.retry()
+            when {
+                response.isSuccessful -> {
+                    Log.d("CRUCI_DEBUG", "Sincronización Exitosa")
+                    Result.success()
+                }
+                // Datos que el servidor nunca va a aceptar: reintentar no sirve
+                response.code() == 400 -> {
+                    Log.e("CRUCI_DEBUG", "Llamada rechazada por el servidor (400)")
+                    Result.failure()
+                }
+                // 401 (token inválido/revocado) y 5xx: reintento con backoff
+                else -> {
+                    Log.e("CRUCI_DEBUG", "Error servidor: ${response.code()}")
+                    Result.retry()
+                }
             }
         } catch (e: Exception) {
             Log.e("CRUCI_DEBUG", "Error de red: ${e.message}")

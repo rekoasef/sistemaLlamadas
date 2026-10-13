@@ -20,6 +20,11 @@ function destinatariosDesdeEnv(nombre: 'REPORT_RECIPIENTS' | 'ALERT_RECIPIENTS')
   return lista
 }
 
+/** Hoy el sistema no manda mails: sin credenciales de Gmail, el envío se omite. */
+export function emailConfigurado(): boolean {
+  return Boolean(GMAIL_USER && GMAIL_PASS)
+}
+
 function crearTransporter() {
   return nodemailer.createTransport({
     service: 'gmail',

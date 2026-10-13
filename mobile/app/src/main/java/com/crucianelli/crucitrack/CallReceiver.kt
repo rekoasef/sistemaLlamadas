@@ -11,7 +11,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.UUID
 
 class CallReceiver : BroadcastReceiver() {
     
@@ -40,7 +43,7 @@ class CallReceiver : BroadcastReceiver() {
     private suspend fun processCallLog(context: Context) {
         val cursor = context.contentResolver.query(
             CallLog.Calls.CONTENT_URI,
-            arrayOf(CallLog.Calls._ID, CallLog.Calls.NUMBER, CallLog.Calls.DURATION, CallLog.Calls.TYPE),
+            arrayOf(CallLog.Calls._ID, CallLog.Calls.NUMBER, CallLog.Calls.DURATION, CallLog.Calls.TYPE, CallLog.Calls.DATE),
             null,
             null,
             CallLog.Calls.DATE + " DESC"
@@ -49,9 +52,11 @@ class CallReceiver : BroadcastReceiver() {
         cursor?.use {
             if (it.moveToFirst()) {
                 val callId = it.getString(it.getColumnIndex(CallLog.Calls._ID))
-                val number = it.getString(it.getColumnIndex(CallLog.Calls.NUMBER))
+                // NUMBER es null en llamadas de número privado
+                val number = it.getString(it.getColumnIndex(CallLog.Calls.NUMBER)) ?: ""
                 val duration = it.getInt(it.getColumnIndex(CallLog.Calls.DURATION))
                 val typeCode = it.getInt(it.getColumnIndex(CallLog.Calls.TYPE))
+                val callDate = it.getLong(it.getColumnIndex(CallLog.Calls.DATE))
                 
                 val prefs = context.getSharedPreferences("CallTrackerPrefs", Context.MODE_PRIVATE)
                 val lastId = prefs.getString("last_call_id", "")
@@ -64,18 +69,17 @@ class CallReceiver : BroadcastReceiver() {
                 val status = if (duration >= 15) "ATENDIDA" else "RECHAZADA"
 
                 // 1. Inserción Sincrónica en Room para asegurar persistencia antes del Worker
-                saveToLocalDatabase(context, number, type, duration, status)
-                
+                saveToLocalDatabase(context, number, type, duration, status, callDate)
+
                 // 2. Encolar Worker con prioridad máxima
-                enqueueSyncWorker(context, number, type, duration, status)
+                enqueueSyncWorker(context, number, type, duration, status, callDate)
             }
         }
     }
 
-    private suspend fun saveToLocalDatabase(context: Context, num: String, type: String, dur: Int, stat: String) {
-        val prefs = context.getSharedPreferences("Config", Context.MODE_PRIVATE)
-        val deviceId = prefs.getString("device_id", "1") ?: "1"
-        
+    private suspend fun saveToLocalDatabase(context: Context, num: String, type: String, dur: Int, stat: String, callDate: Long) {
+        val deviceId = DeviceSettings.deviceId(context) ?: "SIN_CONFIGURAR"
+
         try {
             val db = AppDatabase.getDatabase(context)
             db.callDao().insertCall(CallLogEntity(
@@ -83,7 +87,7 @@ class CallReceiver : BroadcastReceiver() {
                 type = type,
                 duration = dur,
                 status = stat,
-                timestamp = System.currentTimeMillis(),
+                timestamp = callDate,
                 deviceId = deviceId
             ))
             Log.d("CallReceiver", "Guardado local exitoso")
@@ -92,16 +96,16 @@ class CallReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun enqueueSyncWorker(context: Context, num: String, type: String, dur: Int, stat: String) {
-        val prefs = context.getSharedPreferences("Config", Context.MODE_PRIVATE)
-        val deviceId = prefs.getString("device_id", "1") ?: "1"
+    private fun enqueueSyncWorker(context: Context, num: String, type: String, dur: Int, stat: String, callDate: Long) {
+        val fecha = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", Locale.US).format(Date(callDate))
 
         val data = Data.Builder()
+            .putString("id", UUID.randomUUID().toString()) // fijo entre reintentos: el servidor no duplica
             .putString("numero", num)
             .putString("tipo", type)
             .putInt("duracion", dur)
             .putString("estado", stat)
-            .putString("dispositivoId", deviceId)
+            .putString("fecha", fecha)
             .build()
 
         val syncRequest = OneTimeWorkRequestBuilder<SyncCallWorker>()

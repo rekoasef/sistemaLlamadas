@@ -1,25 +1,29 @@
 package com.crucianelli.crucitrack
 
 import com.google.gson.annotations.SerializedName
-import java.text.SimpleDateFormat
-import java.util.*
 
+/**
+ * Llamada que se manda a /api/ingest/llamada.
+ * El dispositivo no viaja: el servidor lo deduce del token.
+ */
 data class CallRequest(
-    @SerializedName("numero_telefono") 
+    /** UUID generado al detectar la llamada: un reintento no la duplica. */
+    @SerializedName("id")
+    val id: String,
+
+    @SerializedName("numero_telefono")
     val phoneNumber: String,
 
-    @SerializedName("tipo_llamada") 
+    @SerializedName("tipo_llamada")
     val type: String,
 
-    @SerializedName("duracion_segundos") 
+    @SerializedName("duracion_segundos")
     val duration: Int,
 
-    @SerializedName("dispositivo_id") 
-    val deviceId: String,
-
-    @SerializedName("estado") 
+    @SerializedName("estado")
     val status: String,
 
-    @SerializedName("fecha_llamada") 
-    val date: String = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", Locale.getDefault()).format(Date())
+    /** Hora de la llamada según el CallLog, ISO 8601 con offset. */
+    @SerializedName("fecha_llamada")
+    val date: String
 )

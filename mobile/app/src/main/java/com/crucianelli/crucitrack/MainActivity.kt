@@ -67,8 +67,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        val prefs = getSharedPreferences("Config", Context.MODE_PRIVATE)
-        if (!prefs.contains("device_id")) {
+        // Instalación nueva, o actualización desde la v1 (que no tenía token)
+        if (!DeviceSettings.isConfigured(this)) {
             showDeviceIdDialog()
         }
 
@@ -110,22 +110,39 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showDeviceIdDialog() {
-        val input = EditText(this).apply { 
-            hint = "Escribí 1 o 2" 
-            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+        val inputId = EditText(this).apply {
+            hint = "ID del puesto (ej. 1)"
+            inputType = android.text.InputType.TYPE_CLASS_TEXT
+            setText(DeviceSettings.deviceId(this@MainActivity) ?: "")
+        }
+        val inputToken = EditText(this).apply {
+            hint = "Token (XXXX-XXXX-XXXX-XXXX-XXXX)"
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or
+                android.text.InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS or
+                android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+        }
+        val form = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(48, 16, 48, 0)
+            addView(inputId)
+            addView(inputToken)
         }
         AlertDialog.Builder(this)
             .setTitle("Configurar Dispositivo")
-            .setMessage("Ingresa el ID de este puesto:")
-            .setView(input)
+            .setMessage("Ingresá el ID del puesto y el token generado en la web (Dispositivos → Generar token).")
+            .setView(form)
             .setCancelable(false)
             .setPositiveButton("Guardar") { _, _ ->
-                val id = input.text.toString()
-                if (id.isNotEmpty()) {
-                    getSharedPreferences("Config", Context.MODE_PRIVATE).edit().putString("device_id", id).apply()
+                val id = inputId.text.toString().trim()
+                val token = inputToken.text.toString().trim()
+                if (id.isNotEmpty() && token.isNotEmpty()) {
+                    DeviceSettings.save(this, id, token)
                     Toast.makeText(this, "Guardado: ID $id", Toast.LENGTH_SHORT).show()
                     HeartbeatWorker.schedule(this)
                     HeartbeatWorker.sendNow(this)
+                } else {
+                    Toast.makeText(this, "Faltan el ID o el token", Toast.LENGTH_LONG).show()
+                    showDeviceIdDialog()
                 }
             }.show()
     }

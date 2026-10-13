@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
+import { normalizarTelefono } from '@/lib/telefono'
 import {
   X, Save, Phone, Trash2, Plus, Building2, MapPin, Hash, Search,
   CheckCircle, Loader2,
@@ -160,6 +161,19 @@ export default function ModalEditarConcesionario({ concesionario, onClose, onSuc
     }
     setLoading(true)
     try {
+      // Compara normalizado: +543471…, +5493471… y 3471… son el mismo número.
+      const { data: existentes, error: errDup } = await supabase
+        .from('concesionario_telefonos')
+        .select('concesionarios(nombre)')
+        .eq('numero_normalizado', normalizarTelefono(nuevoTel))
+        .limit(1)
+      if (errDup) throw errDup
+      if (existentes && existentes.length > 0) {
+        const nombre = (existentes[0] as any).concesionarios?.nombre ?? 'OTRO CONCESIONARIO'
+        alert(`ESTE NÚMERO YA ESTÁ EN LA AGENDA DE "${nombre}"`)
+        return
+      }
+
       const { error } = await supabase
         .from('concesionario_telefonos')
         .insert([{ concesionario_id: createdId, numero_telefono: nuevoTel.trim(), nombre_referencia: 'ADICIONAL' }])
@@ -167,8 +181,9 @@ export default function ModalEditarConcesionario({ concesionario, onClose, onSuc
       setNuevoTel('')
       fetchTelefonos()
       onSuccess()
-    } catch {
-      alert('ESTE NÚMERO YA EXISTE EN OTRO CONCESIONARIO')
+    } catch (err: any) {
+      console.error(err)
+      alert(`ERROR AL AGREGAR EL NÚMERO: ${err?.message ?? 'Error desconocido'}`)
     } finally {
       setLoading(false)
     }

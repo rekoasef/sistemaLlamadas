@@ -23,12 +23,12 @@ class HeartbeatWorker(appContext: Context, workerParams: WorkerParameters) :
     CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
-        val prefs    = applicationContext.getSharedPreferences("Config", Context.MODE_PRIVATE)
-        val deviceId = prefs.getString("device_id", "") ?: ""
+        val deviceId = DeviceSettings.deviceId(applicationContext)
+        val auth = DeviceSettings.authHeader(applicationContext)
 
-        // Seguridad extra: no enviar si el ID no fue configurado aún
-        if (deviceId.isBlank() || deviceId == "DESCONOCIDO") {
-            Log.w("Heartbeat", "device_id no configurado, omitiendo heartbeat")
+        // No enviar hasta que el ID y el token estén configurados
+        if (deviceId == null || auth == null) {
+            Log.w("Heartbeat", "ID o token no configurados, omitiendo heartbeat")
             return Result.success()
         }
 
@@ -43,9 +43,8 @@ class HeartbeatWorker(appContext: Context, workerParams: WorkerParameters) :
 
         return try {
             val response = RetrofitClient.apiService.sendHeartbeat(
-                apiKey    = SupabaseConfig.API_KEY,
-                bearer    = "Bearer ${SupabaseConfig.API_KEY}",
-                heartbeat = HeartbeatRequest(terminalId = deviceId, status = status)
+                bearer    = auth,
+                heartbeat = HeartbeatRequest(status = status)
             )
             if (response.isSuccessful) Result.success()
             else Result.retry()

@@ -5,7 +5,7 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { calcularKPIs, generarResumenEjecutivo, calcularFugasPorFranja } from '@/lib/kpi'
 import { calcularTopConcesionarios } from '@/lib/wallboard'
 import { exportarReportePDFComoBase64 } from '@/lib/pdf'
-import { enviarReportePorEmail } from '@/lib/email'
+import { emailConfigurado, enviarReportePorEmail } from '@/lib/email'
 import { isCronAuthorized, serverError, unauthorized } from '@/lib/api-auth'
 
 const MESES_ES = [
@@ -93,14 +93,13 @@ export async function GET(req: NextRequest) {
     const pdfBase64 = exportarReportePDFComoBase64(reporteParaPDF)
     const periodo = `${fechaInicio} — ${fechaFin}`
 
-    await enviarReportePorEmail({
-      titulo,
-      periodo,
-      resumen,
-      pdfBase64,
-    })
+    if (emailConfigurado()) {
+      await enviarReportePorEmail({ titulo, periodo, resumen, pdfBase64 })
+    } else {
+      console.log('[cron/monthly-report] Gmail sin configurar: reporte guardado, mail omitido')
+    }
 
-    console.log(`[cron/monthly-report] Enviado: ${titulo} (${fechaInicio} → ${fechaFin})`)
+    console.log(`[cron/monthly-report] Generado: ${titulo} (${fechaInicio} → ${fechaFin})`)
     return NextResponse.json({ ok: true, titulo, fechaInicio, fechaFin, totalLlamadas: llamadas.length })
   } catch (err) {
     return serverError('[cron/monthly-report]', err, 'Error al generar el reporte mensual')

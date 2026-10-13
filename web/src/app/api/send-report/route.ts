@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { enviarReportePorEmail } from '@/lib/email'
+import { emailConfigurado, enviarReportePorEmail } from '@/lib/email'
 import { hasUserSession, serverError, unauthorized } from '@/lib/api-auth'
 
 const MAX_PDF_BYTES = 10 * 1024 * 1024
@@ -21,6 +21,9 @@ export async function POST(req: NextRequest) {
   }
 
   if (!(await hasUserSession())) return unauthorized()
+  if (!emailConfigurado()) {
+    return NextResponse.json({ error: 'El envío de mails no está configurado' }, { status: 503 })
+  }
 
   try {
     const body = await req.json().catch(() => null)

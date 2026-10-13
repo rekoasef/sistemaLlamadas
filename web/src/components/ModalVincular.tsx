@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { normalizarTelefono } from '@/lib/telefono'
 import { X, Save, Building2, Search, Check, AlertTriangle } from 'lucide-react'
 
 interface Props {
@@ -31,15 +32,19 @@ export default function ModalVincular({ numero, onClose, onSuccess }: Props) {
   }, [])
 
   // FUNCIÓN PARA VERIFICAR SI EL NÚMERO YA EXISTE
+  // Compara por número normalizado: el mismo teléfono puede estar guardado como
+  // +543471…, +5493471… o 3471…, y la comparación exacta no lo detectaba.
   const verificarDuplicado = async () => {
     const { data, error } = await supabase
       .from('concesionario_telefonos')
       .select('concesionarios(nombre)')
-      .eq('numero_telefono', numero)
-      .maybeSingle()
-    
-    if (data) {
-      alert(`ERROR CRÍTICO: Este número ya está asignado a "${(data as any).concesionarios.nombre}". No se puede duplicar en la agenda.`)
+      .eq('numero_normalizado', normalizarTelefono(numero))
+      .limit(1)
+
+    if (error) throw error
+    if (data && data.length > 0) {
+      const nombre = (data[0] as any).concesionarios?.nombre ?? 'otro concesionario'
+      alert(`ERROR CRÍTICO: Este número ya está asignado a "${nombre}". No se puede duplicar en la agenda.`)
       return true
     }
     return false
@@ -80,6 +85,10 @@ const handleCrearYVincular = async () => {
     setLoading(true);
     
     try {
+      // 0. Sin este chequeo, el upsert de abajo movía en silencio un número que
+      //    ya estaba en la agenda de otro concesionario.
+      if (await verificarDuplicado()) return
+
       // 1. Crear el concesionario con su campo obligatorio
       const { data: nuevoC, error: errC } = await supabase
         .from('concesionarios')

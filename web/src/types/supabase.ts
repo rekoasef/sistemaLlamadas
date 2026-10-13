@@ -19,6 +19,7 @@ export type Database = {
           concesionario_id: string | null
           id: string
           nombre_referencia: string | null
+          numero_normalizado: string | null
           numero_telefono: string
         }
         Insert: {
@@ -100,6 +101,27 @@ export type Database = {
         }
         Relationships: []
       }
+      dispositivo_tokens: {
+        Row: {
+          creado_at: string
+          dispositivo_id: string
+          token_hash: string
+          ultimo_uso_at: string | null
+        }
+        Insert: {
+          creado_at?: string
+          dispositivo_id: string
+          token_hash: string
+          ultimo_uso_at?: string | null
+        }
+        Update: {
+          creado_at?: string
+          dispositivo_id?: string
+          token_hash?: string
+          ultimo_uso_at?: string | null
+        }
+        Relationships: []
+      }
       llamadas: {
         Row: {
           concesionario_id: string | null
@@ -109,6 +131,7 @@ export type Database = {
           estado: string | null
           fecha_llamada: string | null
           id: string
+          numero_normalizado: string | null
           numero_telefono: string | null
           tipo_llamada: string | null
         }

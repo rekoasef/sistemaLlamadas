@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { fetchAllPages } from '@/lib/paginate'
-import { Monitor, Edit3, Save, X, Activity, Smartphone, WifiOff, ShieldAlert, History, ArrowRight } from 'lucide-react'
+import { Monitor, Edit3, Save, X, Activity, Smartphone, WifiOff, ShieldAlert, History, ArrowRight, KeyRound, Copy } from 'lucide-react'
 
 const ONLINE_THRESHOLD_MS  = 45 * 60 * 1000      // < 45 min → En línea
 const ALERTA_THRESHOLD_MS  = 24 * 60 * 60 * 1000  // > 24 hs  → alerta roja
@@ -187,12 +187,53 @@ function HistorialModal({
   )
 }
 
+interface TokenMeta {
+  dispositivo_id: string
+  creado_at: string
+  ultimo_uso_at: string | null
+}
+
+/** Muestra el token recién generado. Es la única vez que se puede ver. */
+function TokenModal({ dispositivoId, token, onClose }: { dispositivoId: string; token: string; onClose: () => void }) {
+  const [copiado, setCopiado] = useState(false)
+  const copiar = async () => {
+    await navigator.clipboard.writeText(token)
+    setCopiado(true)
+  }
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="w-full max-w-lg bg-neutral-900 border border-neutral-800 rounded-[2.5rem] p-10 space-y-6" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-red-600 italic">Token de la terminal {dispositivoId}</p>
+            <h3 className="text-2xl font-black italic uppercase text-white tracking-tighter mt-1">Copialo ahora</h3>
+          </div>
+          <button onClick={onClose} className="p-2 text-neutral-500 hover:text-white transition-colors"><X size={20} /></button>
+        </div>
+        <p className="font-mono text-2xl text-white tracking-[0.15em] bg-black border border-neutral-800 rounded-2xl p-5 text-center select-all break-all">{token}</p>
+        <button
+          onClick={copiar}
+          className="w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white font-black uppercase italic text-xs tracking-widest rounded-2xl py-4 transition-colors"
+        >
+          <Copy size={14} /> {copiado ? 'Copiado' : 'Copiar token'}
+        </button>
+        <p className="text-neutral-500 text-[11px] leading-relaxed">
+          Cargalo en la app del teléfono (botón <span className="text-white font-bold">ID</span>) junto con el ID <span className="text-white font-bold">{dispositivoId}</span>.
+          No se vuelve a mostrar: si se pierde, generá uno nuevo. El token anterior de esta terminal dejó de funcionar.
+        </p>
+      </div>
+    </div>
+  )
+}
+
 export default function DispositivosPage() {
   const [dispositivos, setDispositivos] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [newAlias, setNewAlias] = useState('')
   const [historialTerminal, setHistorialTerminal] = useState<{ id: string; alias: string } | null>(null)
+  const [tokenNuevo, setTokenNuevo] = useState<{ dispositivoId: string; token: string } | null>(null)
+  const [idNuevaTerminal, setIdNuevaTerminal] = useState('')
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -202,7 +243,11 @@ export default function DispositivosPage() {
       '[dispositivos] llamadas'
     ).catch((err) => { console.error(err); return [] })
 
-    const uniqueIds = Array.from(new Set(llamadas.map(l => l.dispositivo_id)))
+    // Tokens: los lee el servidor con service role; acá solo llega si existe y cuándo se usó.
+    const tokens: TokenMeta[] = await fetch('/api/dispositivos/token')
+      .then(r => (r.ok ? r.json() : { tokens: [] }))
+      .then(j => j.tokens)
+      .catch(() => [])
 
     const { data: aliasData } = await supabase
       .from('dispositivo_alias')
@@ -211,6 +256,13 @@ export default function DispositivosPage() {
     const { data: statusData } = await supabase
       .from('terminal_status')
       .select('terminal_id, status, last_seen')
+
+    // Una terminal nueva aparece apenas tiene token o heartbeat, sin esperar a su primera llamada.
+    const uniqueIds = Array.from(new Set([
+      ...llamadas.map(l => l.dispositivo_id),
+      ...(statusData ?? []).map((s: any) => s.terminal_id),
+      ...tokens.map(t => t.dispositivo_id),
+    ].filter(Boolean)))
 
     const list = uniqueIds.map(id => {
       const aliasObj = aliasData?.find((a: any) => a.dispositivo_id === id)
@@ -221,6 +273,7 @@ export default function DispositivosPage() {
         isRegistered: !!aliasObj,
         status: statusObj?.status,
         lastSeen: statusObj?.last_seen,
+        token: tokens.find(t => t.dispositivo_id === id) ?? null,
       }
     })
 
@@ -250,6 +303,23 @@ export default function DispositivosPage() {
     }
   }
 
+  const generarToken = async (dispositivoId: string, yaTenia: boolean) => {
+    if (yaTenia && !window.confirm(`¿Generar un token nuevo para la terminal ${dispositivoId}? El actual deja de funcionar y hay que cargar el nuevo en el teléfono.`)) return
+    const res = await fetch('/api/dispositivos/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dispositivoId }),
+    })
+    const json = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      alert(json.error ?? 'No se pudo generar el token')
+      return
+    }
+    setTokenNuevo({ dispositivoId: json.dispositivoId, token: json.token })
+    setIdNuevaTerminal('')
+    fetchData()
+  }
+
   return (
     <div className="max-w-7xl mx-auto space-y-10 pb-20 px-4 pt-10 animate-in fade-in duration-700">
 
@@ -260,6 +330,20 @@ export default function DispositivosPage() {
         <p className="text-neutral-500 text-[10px] font-bold uppercase tracking-[0.4em] mt-2 italic">
           Asignación de nombres y puestos de red
         </p>
+        <form
+          onSubmit={(e) => { e.preventDefault(); if (idNuevaTerminal.trim()) generarToken(idNuevaTerminal.trim(), dispositivos.some(d => d.id === idNuevaTerminal.trim() && d.token)) }}
+          className="flex flex-col sm:flex-row gap-3 mt-6"
+        >
+          <input
+            value={idNuevaTerminal}
+            onChange={(e) => setIdNuevaTerminal(e.target.value)}
+            placeholder="ID DE TERMINAL NUEVA"
+            className="bg-black border border-neutral-800 focus:border-red-600 rounded-2xl px-5 py-3 text-white font-mono text-sm uppercase outline-none w-full sm:w-72"
+          />
+          <button type="submit" className="flex items-center justify-center gap-2 bg-neutral-800 hover:bg-red-600 text-white font-black uppercase italic text-[10px] tracking-widest rounded-2xl px-6 py-3 transition-colors">
+            <KeyRound size={14} /> Generar token
+          </button>
+        </form>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -311,6 +395,20 @@ export default function DispositivosPage() {
                   <TerminalStatusBadge status={d.status} lastSeen={d.lastSeen} />
                   <Activity size={16} className="text-neutral-800" />
                 </div>
+                <div className="flex items-center justify-between">
+                  <span className={`text-[9px] font-black uppercase tracking-widest ${d.token ? 'text-neutral-500' : 'text-yellow-600'}`}>
+                    {d.token
+                      ? `App v2 · ${d.token.ultimo_uso_at ? `último uso ${formatElapsed(d.token.ultimo_uso_at)}` : 'token sin usar'}`
+                      : 'Sin token (app v1)'}
+                  </span>
+                  <button
+                    onClick={() => generarToken(d.id, !!d.token)}
+                    className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-neutral-600 hover:text-white transition-colors"
+                  >
+                    <KeyRound size={11} />
+                    {d.token ? 'Regenerar' : 'Generar token'}
+                  </button>
+                </div>
                 <button
                   onClick={() => setHistorialTerminal({ id: d.id, alias: d.alias })}
                   className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-neutral-600 hover:text-neutral-400 transition-colors"
@@ -323,6 +421,14 @@ export default function DispositivosPage() {
           </div>
         ))}
       </div>
+
+      {tokenNuevo && (
+        <TokenModal
+          dispositivoId={tokenNuevo.dispositivoId}
+          token={tokenNuevo.token}
+          onClose={() => setTokenNuevo(null)}
+        />
+      )}
 
       {historialTerminal && (
         <HistorialModal
