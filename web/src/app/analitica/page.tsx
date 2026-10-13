@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo, memo } from 'react'
 import {
   BarChart3, TrendingUp, Zap, AlertTriangle,
-  Clock, ChevronRight, Mail, ArrowDownLeft, ArrowUpRight,
+  Clock, ArrowDownLeft, ArrowUpRight,
 } from 'lucide-react'
 import { fetchTodasLasLlamadas } from '@/services/llamadas.service'
 import { fetchAliasMap } from '@/services/alias.service'
@@ -201,7 +201,6 @@ export default function AnaliticaPage() {
   const [llamadas, setLlamadas] = useState<LlamadaConConcesionario[]>([])
   const [aliasMap, setAliasMap] = useState<AliasMap>({})
   const [loading, setLoading] = useState(true)
-  const [emailReporte, setEmailReporte] = useState('')
 
   useEffect(() => {
     const load = async () => {
@@ -497,36 +496,6 @@ export default function AnaliticaPage() {
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-
-        {/* Email subscription footer */}
-        <div className="bg-red-600 p-12 rounded-[3.5rem] flex flex-col lg:flex-row items-center justify-between gap-8 shadow-2xl shadow-red-600/30 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-32 bg-white/10 blur-[80px] rounded-full group-hover:scale-150 transition-transform duration-1000" />
-          <div className="text-center lg:text-left relative z-10">
-            <div className="flex items-center justify-center lg:justify-start gap-4 mb-3 text-white">
-              <Mail size={40} className="drop-shadow-lg" />
-              <h3 className="text-4xl font-black italic uppercase leading-none tracking-tighter">
-                Reportes Semanales
-              </h3>
-            </div>
-            <p className="text-white/80 text-[11px] font-bold uppercase tracking-[0.2em] italic">
-              Análisis de eficiencia operativa y auditoría de red industrial
-            </p>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto relative z-10">
-            <input
-              type="email"
-              placeholder="ADMIN@CRUCIANELLI.COM"
-              className="bg-black/20 border-2 border-white/20 rounded-2xl px-8 py-5 text-white placeholder:text-white/40 text-xs font-black outline-none focus:border-white focus:bg-black/40 transition-all w-full lg:w-80 uppercase italic"
-              onChange={(e) => setEmailReporte(e.target.value)}
-            />
-            <button
-              onClick={() => alert(`Suscripción activada para ${emailReporte}`)}
-              className="bg-white text-red-600 px-10 py-5 rounded-2xl font-black uppercase text-[10px] italic hover:bg-black hover:text-white transition-all flex items-center justify-center gap-3 group shadow-2xl"
-            >
-              Suscripción BI <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
-            </button>
           </div>
         </div>
 

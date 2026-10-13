@@ -10,7 +10,7 @@ const MAX_PDF_BYTES = 10 * 1024 * 1024
  * Body: { titulo, periodo, resumen, pdfBase64 }
  * - pdfBase64: base64-encoded PDF (generated client-side with jsPDF)
  *
- * Requiere sesión. Los destinatarios los fija el servidor (DESTINATARIOS_DEFAULT):
+ * Requiere sesión. Los destinatarios los fija el servidor (REPORT_RECIPIENTS):
  * si vinieran del body, el endpoint serviría para mandar mails desde la cuenta
  * corporativa a cualquier dirección.
  */

@@ -1,7 +1,4 @@
 import nodemailer from 'nodemailer'
-import { DESTINATARIOS_DEFAULT } from '@/lib/email-config'
-
-export { DESTINATARIOS_DEFAULT }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Configuration
@@ -9,6 +6,19 @@ export { DESTINATARIOS_DEFAULT }
 
 const GMAIL_USER = process.env.GMAIL_USER ?? ''
 const GMAIL_PASS = process.env.GMAIL_APP_PASSWORD ?? ''
+
+/**
+ * Lista de mails separada por comas en una variable de entorno. Viven fuera del
+ * repo (que es público). Falla explícito si falta, en vez de no mandar a nadie.
+ */
+function destinatariosDesdeEnv(nombre: 'REPORT_RECIPIENTS' | 'ALERT_RECIPIENTS'): string[] {
+  const lista = (process.env[nombre] ?? '')
+    .split(',')
+    .map((d) => d.trim())
+    .filter(Boolean)
+  if (lista.length === 0) throw new Error(`[email] Falta la variable de entorno ${nombre}`)
+  return lista
+}
 
 function crearTransporter() {
   return nodemailer.createTransport({
@@ -29,7 +39,7 @@ export interface EnvioReporteParams {
 }
 
 /**
- * Send a report via Gmail with the PDF attached, always to DESTINATARIOS_DEFAULT.
+ * Send a report via Gmail with the PDF attached, always to REPORT_RECIPIENTS.
  * Runs server-side only (API Route Handler).
  */
 export async function enviarReportePorEmail(params: EnvioReporteParams): Promise<void> {
@@ -40,7 +50,7 @@ export async function enviarReportePorEmail(params: EnvioReporteParams): Promise
 
   await transporter.sendMail({
     from: `"Cruci-Track Sistema" <${GMAIL_USER}>`,
-    to: DESTINATARIOS_DEFAULT.join(', '),
+    to: destinatariosDesdeEnv('REPORT_RECIPIENTS').join(', '),
     subject: `[CRUCI-TRACK] ${titulo} — ${periodo}`,
     html: buildEmailHTML(titulo, periodo, resumen),
     attachments: [
@@ -86,7 +96,7 @@ export async function enviarAlertaTerminal(params: AlertaTerminalParams): Promis
 
   await transporter.sendMail({
     from: `"Cruci-Track Sistema" <${GMAIL_USER}>`,
-    to: 'rasef@crucianelli.com',
+    to: destinatariosDesdeEnv('ALERT_RECIPIENTS').join(', '),
     subject: `[CRUCI-TRACK] ${esGrave ? '⚠️ ALERTA' : 'INFO'} — ${alias ?? `Terminal ${terminalId}`} cambió a ${statusNuevo}`,
     html: `
       <div style="font-family:Arial,sans-serif;background:#0F0F0F;color:#fff;padding:40px;max-width:600px;margin:0 auto;border-radius:12px;">

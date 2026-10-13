@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { fetchAllPages } from '@/lib/paginate'
+import { inicioDiaAR, finDiaAR } from '@/lib/fechas'
 import { 
   ChevronLeft, PhoneIncoming, PhoneOutgoing, 
   Activity, Zap, Phone, Calendar,
@@ -56,8 +57,8 @@ export default function ConcesionarioDetalle() {
       }
     } else {
       if (fechaEspecifica) {
-        gte = `${fechaEspecifica}T00:00:00`
-        lte = `${fechaEspecifica}T23:59:59`
+        gte = inicioDiaAR(fechaEspecifica)
+        lte = finDiaAR(fechaEspecifica)
       } else {
         gte = new Date(anioSeleccionado, mesSeleccionado - 1, 1).toISOString()
         lte = new Date(anioSeleccionado, mesSeleccionado, 0, 23, 59, 59).toISOString()

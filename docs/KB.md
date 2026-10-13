@@ -549,7 +549,18 @@ necesita una función de servicio, seguir el mismo patrón en vez de duplicar qu
 NEXT_PUBLIC_SUPABASE_URL=...        # público
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...   # público
 SUPABASE_SERVICE_ROLE_KEY=...       # SECRETO — sin prefijo NEXT_PUBLIC_
+CRON_SECRET=...                     # SECRETO — Vercel Cron lo manda como Bearer
+TERMINAL_ALERT_WEBHOOK_SECRET=...   # SECRETO — header x-webhook-secret del Database Webhook
+GMAIL_USER=...                      # cuenta que envía los mails
+GMAIL_APP_PASSWORD=...              # SECRETO — app password de Gmail
+REPORT_RECIPIENTS=a@x.com,b@x.com   # destinatarios de los reportes, separados por coma
+ALERT_RECIPIENTS=a@x.com            # destinatarios de las alertas de terminales
 ```
+
+Todos los chequeos de `/api/*` son **fail-closed** (`src/lib/api-auth.ts`): si falta
+`CRON_SECRET` los crons responden 401, y si falta `TERMINAL_ALERT_WEBHOOK_SECRET` el
+webhook también. Si faltan `REPORT_RECIPIENTS` o `ALERT_RECIPIENTS`, el envío falla con un
+error explícito en el log. Los destinatarios no están en el código porque el repo es público.
 
 `SUPABASE_SERVICE_ROLE_KEY` hace bypass total de RLS. El prefijo `NEXT_PUBLIC_` la
 inyectaría en el bundle del cliente y quedaría expuesta a cualquier visitante.

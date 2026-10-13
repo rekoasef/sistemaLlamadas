@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { fetchAllPages } from '@/lib/paginate'
+import { inicioDiaAR, finDiaAR } from '@/lib/fechas'
 import type { Database } from '@/types/supabase'
 import type { LlamadaConConcesionario, FiltroLlamadas } from '@/types/domain'
 
@@ -38,8 +39,8 @@ function buildDateRange(
 
   if (filtro.fechaEspecifica) {
     return {
-      gte: `${filtro.fechaEspecifica}T00:00:00`,
-      lte: `${filtro.fechaEspecifica}T23:59:59`,
+      gte: inicioDiaAR(filtro.fechaEspecifica),
+      lte: finDiaAR(filtro.fechaEspecifica),
     }
   }
 
@@ -112,8 +113,8 @@ export async function fetchLlamadasByRange(
     client
       .from('llamadas')
       .select('*, concesionarios:concesionario_id (nombre, provincia, ciudad, latitud, longitud)')
-      .gte('fecha_llamada', `${fechaInicio}T00:00:00`)
-      .lte('fecha_llamada', `${fechaFin}T23:59:59`)
+      .gte('fecha_llamada', inicioDiaAR(fechaInicio))
+      .lte('fecha_llamada', finDiaAR(fechaFin))
       .order('fecha_llamada', { ascending: false })
       .order('id', { ascending: false }),
     '[llamadas.service] fetchLlamadasByRange'

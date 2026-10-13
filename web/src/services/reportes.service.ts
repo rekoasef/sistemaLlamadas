@@ -46,6 +46,24 @@ export async function insertReporte(
 }
 
 /**
+ * `true` si ya existe un reporte automático con ese título. Los crons lo usan
+ * para no duplicar el reporte cuando se reintentan (por ejemplo, si falló el
+ * envío del mail después de guardarlo).
+ */
+export async function existeReporteAutomatico(
+  titulo: string,
+  client: Client = supabase
+): Promise<boolean> {
+  const { count, error } = await client
+    .from('reportes_generados')
+    .select('id', { count: 'exact', head: true })
+    .eq('tipo', 'AUTOMATICO')
+    .eq('titulo', titulo)
+  if (error) throw new Error(`[reportes.service] existeReporteAutomatico: ${error.message}`)
+  return (count ?? 0) > 0
+}
+
+/**
  * Hard-delete a report by ID.
  * Reports are audit documents; deletion should be confirmed at the UI layer.
  */

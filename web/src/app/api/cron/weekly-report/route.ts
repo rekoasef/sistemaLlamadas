@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { fetchLlamadasByRange } from '@/services/llamadas.service'
-import { insertReporte } from '@/services/reportes.service'
+import { existeReporteAutomatico, insertReporte } from '@/services/reportes.service'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { calcularKPIs, generarResumenEjecutivo, calcularFugasPorFranja } from '@/lib/kpi'
 import { calcularTopConcesionarios } from '@/lib/wallboard'
@@ -54,8 +54,9 @@ export async function GET(req: NextRequest) {
     const topConcesionarios = calcularTopConcesionarios(llamadas, 10)
     const resumen = generarResumenEjecutivo(kpis, fechaInicio, fechaFin, franjas)
 
-    // Save to DB
-    await insertReporte({
+    // Save to DB — skipped on a retry, so a failed email doesn't leave duplicates
+    const yaGuardado = await existeReporteAutomatico(titulo, db)
+    if (!yaGuardado) await insertReporte({
       titulo,
       rango_inicio: fechaInicio,
       rango_fin: fechaFin,

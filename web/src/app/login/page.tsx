@@ -16,10 +16,22 @@ import {
  * - Session stored in cookies via @supabase/ssr (readable by middleware + Server Components)
  * - Post-login redirect honours the `redirectTo` query param set by the middleware guard
  */
+
+/**
+ * Only same-origin paths are accepted as `redirectTo`; anything else falls back
+ * to `/`. Without this, `/login?redirectTo=https://evil.example` turns a real
+ * Cruci-Track link into a post-login redirect to an attacker's site.
+ */
+function rutaInternaSegura(destino: string | null): string {
+  if (!destino || !destino.startsWith('/') || destino.startsWith('//') || destino.startsWith('/\\')) {
+    return '/'
+  }
+  return destino
+}
 export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const redirectTo = searchParams.get('redirectTo') ?? '/'
+  const redirectTo = rutaInternaSegura(searchParams.get('redirectTo'))
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
