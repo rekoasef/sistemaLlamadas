@@ -6,6 +6,7 @@ import { calcularKPIs, generarResumenEjecutivo, calcularFugasPorFranja } from '@
 import { calcularTopConcesionarios } from '@/lib/wallboard'
 import { exportarReportePDFComoBase64 } from '@/lib/pdf'
 import { enviarReportePorEmail } from '@/lib/email'
+import { isCronAuthorized, serverError, unauthorized } from '@/lib/api-auth'
 
 /**
  * GET /api/cron/weekly-report
@@ -17,12 +18,8 @@ import { enviarReportePorEmail } from '@/lib/email'
  * Can also be triggered manually with the CRON_SECRET header.
  */
 export async function GET(req: NextRequest) {
-  // Authorization check — Vercel sends Bearer <CRON_SECRET>
-  const authHeader = req.headers.get('authorization')
-  const cronSecret = process.env.CRON_SECRET
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-  }
+  // Vercel sends Bearer <CRON_SECRET>; without the env var every call is rejected
+  if (!isCronAuthorized(req.headers.get('authorization'))) return unauthorized()
 
   try {
     // Los crons corren sin sesión: con el cliente compartido serían rol `anon`
@@ -108,10 +105,6 @@ export async function GET(req: NextRequest) {
     console.log(`[cron/weekly-report] Enviado: ${titulo} (${fechaInicio} → ${fechaFin})`)
     return NextResponse.json({ ok: true, titulo, fechaInicio, fechaFin, totalLlamadas: llamadas.length })
   } catch (err) {
-    console.error('[cron/weekly-report]', err)
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Error al generar el reporte semanal' },
-      { status: 500 }
-    )
+    return serverError('[cron/weekly-report]', err, 'Error al generar el reporte semanal')
   }
 }

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { enviarAlertaTerminal } from '@/lib/email'
-
-const WEBHOOK_SECRET = process.env.TERMINAL_ALERT_WEBHOOK_SECRET ?? ''
+import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { isWebhookAuthorized, serverError, unauthorized } from '@/lib/api-auth'
 
 /**
  * POST /api/terminal-alert
@@ -10,38 +9,38 @@ const WEBHOOK_SECRET = process.env.TERMINAL_ALERT_WEBHOOK_SECRET ?? ''
  * Llamado por el Supabase Database Webhook cuando se inserta una fila
  * en terminal_status_history (= cambio real de estado de una terminal).
  *
- * Supabase envía el header `x-webhook-secret` para autenticar.
+ * Supabase envía el header `x-webhook-secret` para autenticar. Sin
+ * TERMINAL_ALERT_WEBHOOK_SECRET configurado se rechaza todo.
  */
 export async function POST(req: NextRequest) {
   // Verificar el secret para que nadie externo pueda disparar alertas
-  const secret = req.headers.get('x-webhook-secret')
-  if (WEBHOOK_SECRET && secret !== WEBHOOK_SECRET) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  if (!isWebhookAuthorized(req.headers.get('x-webhook-secret'))) return unauthorized()
 
   try {
-    const body = await req.json()
-    const record = body.record as {
-      terminal_id: string
-      status_previo: string | null
-      status_nuevo: string
-      created_at: string
-    }
+    const body = await req.json().catch(() => null)
+    const record = body?.record as {
+      terminal_id: unknown
+      status_previo: unknown
+      status_nuevo: unknown
+      created_at: unknown
+    } | undefined
 
-    if (!record?.terminal_id || !record?.status_nuevo) {
+    if (
+      typeof record?.terminal_id !== 'string' ||
+      typeof record.status_nuevo !== 'string' ||
+      typeof record.created_at !== 'string' ||
+      (record.status_previo !== null && typeof record.status_previo !== 'string')
+    ) {
       return NextResponse.json({ error: 'Payload inválido' }, { status: 400 })
     }
 
-    // Buscar alias del terminal para el mail (tabla pública, anon key suficiente)
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-    const { data: aliasData } = await supabase
+    // Service role: el webhook no tiene sesión, y dispositivo_alias no tiene por
+    // qué quedar legible para anon.
+    const { data: aliasData } = await getSupabaseAdmin()
       .from('dispositivo_alias')
       .select('alias')
       .eq('dispositivo_id', record.terminal_id)
-      .single()
+      .maybeSingle()
 
     await enviarAlertaTerminal({
       terminalId:   record.terminal_id,
@@ -53,10 +52,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true })
   } catch (err) {
-    console.error('[API/terminal-alert]', err)
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Error interno' },
-      { status: 500 }
-    )
+    return serverError('[API/terminal-alert]', err, 'Error interno')
   }
 }

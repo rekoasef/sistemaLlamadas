@@ -26,22 +26,21 @@ export interface EnvioReporteParams {
   periodo: string
   resumen: string
   pdfBase64: string
-  destinatarios?: string[]
 }
 
 /**
- * Send a report via Gmail with the PDF attached.
+ * Send a report via Gmail with the PDF attached, always to DESTINATARIOS_DEFAULT.
  * Runs server-side only (API Route Handler).
  */
 export async function enviarReportePorEmail(params: EnvioReporteParams): Promise<void> {
-  const { titulo, periodo, resumen, pdfBase64, destinatarios = DESTINATARIOS_DEFAULT } = params
+  const { titulo, periodo, resumen, pdfBase64 } = params
 
   const transporter = crearTransporter()
   const pdfBuffer = Buffer.from(pdfBase64, 'base64')
 
   await transporter.sendMail({
     from: `"Cruci-Track Sistema" <${GMAIL_USER}>`,
-    to: destinatarios.join(', '),
+    to: DESTINATARIOS_DEFAULT.join(', '),
     subject: `[CRUCI-TRACK] ${titulo} — ${periodo}`,
     html: buildEmailHTML(titulo, periodo, resumen),
     attachments: [
@@ -79,7 +78,7 @@ function estadoLabel(s: string | null): string {
 export async function enviarAlertaTerminal(params: AlertaTerminalParams): Promise<void> {
   const { terminalId, alias, statusPrevio, statusNuevo, timestamp } = params
   const transporter = crearTransporter()
-  const nombre = alias ?? `Terminal ${terminalId}`
+  const nombre = escapeHtml(alias ?? `Terminal ${terminalId}`)
   const fecha = new Date(timestamp).toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })
 
   const esGrave = statusNuevo === 'SIN_PERMISOS' || statusNuevo === 'OFFLINE'
@@ -88,7 +87,7 @@ export async function enviarAlertaTerminal(params: AlertaTerminalParams): Promis
   await transporter.sendMail({
     from: `"Cruci-Track Sistema" <${GMAIL_USER}>`,
     to: 'rasef@crucianelli.com',
-    subject: `[CRUCI-TRACK] ${esGrave ? '⚠️ ALERTA' : 'INFO'} — ${nombre} cambió a ${statusNuevo}`,
+    subject: `[CRUCI-TRACK] ${esGrave ? '⚠️ ALERTA' : 'INFO'} — ${alias ?? `Terminal ${terminalId}`} cambió a ${statusNuevo}`,
     html: `
       <div style="font-family:Arial,sans-serif;background:#0F0F0F;color:#fff;padding:40px;max-width:600px;margin:0 auto;border-radius:12px;">
         <div style="background:#DC2626;padding:20px;border-radius:8px;margin-bottom:24px;">
@@ -102,11 +101,11 @@ export async function enviarAlertaTerminal(params: AlertaTerminalParams): Promis
             <tr><td style="color:#555;font-size:11px;padding:6px 0;width:140px;">TERMINAL</td>
                 <td style="color:#fff;font-weight:bold;">${nombre}</td></tr>
             <tr><td style="color:#555;font-size:11px;padding:6px 0;">ID</td>
-                <td style="color:#aaa;font-family:monospace;font-size:12px;">${terminalId}</td></tr>
+                <td style="color:#aaa;font-family:monospace;font-size:12px;">${escapeHtml(terminalId)}</td></tr>
             <tr><td style="color:#555;font-size:11px;padding:6px 0;">ESTADO ANTERIOR</td>
-                <td style="color:#aaa;">${estadoLabel(statusPrevio)}</td></tr>
+                <td style="color:#aaa;">${escapeHtml(estadoLabel(statusPrevio))}</td></tr>
             <tr><td style="color:#555;font-size:11px;padding:6px 0;">ESTADO NUEVO</td>
-                <td style="color:${accentColor};font-weight:bold;">${estadoLabel(statusNuevo)}</td></tr>
+                <td style="color:${accentColor};font-weight:bold;">${escapeHtml(estadoLabel(statusNuevo))}</td></tr>
           </table>
         </div>
         ${statusNuevo === 'SIN_PERMISOS' ? `
@@ -129,47 +128,30 @@ export async function enviarAlertaTerminal(params: AlertaTerminalParams): Promis
   })
 }
 
-/**
- * Send a test email to verify credentials and delivery.
- * Runs server-side only (API Route Handler).
- */
-export async function enviarEmailPrueba(): Promise<void> {
-  const transporter = crearTransporter()
-
-  await transporter.sendMail({
-    from: `"Cruci-Track Sistema" <${GMAIL_USER}>`,
-    to: DESTINATARIOS_DEFAULT.join(', '),
-    subject: '[CRUCI-TRACK] Verificación de Configuración de Correo',
-    html: `
-      <div style="font-family:Arial,sans-serif;background:#0F0F0F;color:#fff;padding:40px;max-width:600px;margin:0 auto;border-radius:12px;">
-        <div style="background:#DC2626;padding:20px;border-radius:8px;margin-bottom:24px;">
-          <h1 style="margin:0;font-size:24px;font-weight:900;font-style:italic;letter-spacing:-1px;">CRUCI-TRACK</h1>
-          <p style="margin:4px 0 0;font-size:11px;opacity:.8;letter-spacing:2px;">SISTEMA DE AUDITORÍA · CRUCIANELLI S.A.</p>
-        </div>
-        <h2 style="color:#22c55e;">Configuración de Email Verificada</h2>
-        <p style="color:#aaa;">Este es un correo de prueba generado desde el sistema Cruci-Track para verificar que el envío automático de reportes está configurado correctamente.</p>
-        <p style="color:#555;font-size:12px;border-top:1px solid #222;padding-top:16px;margin-top:24px;">
-          Enviado: ${new Date().toLocaleString('es-AR')}<br>
-          <span style="color:#333;">Documento generado automáticamente · Cruci-Track v2.1 · Crucianelli S.A.</span>
-        </p>
-      </div>
-    `,
-  })
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // HTML template
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Escapa texto para interpolarlo en HTML: los campos pueden venir del cliente o de la DB. */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 function buildEmailHTML(titulo: string, periodo: string, resumen: string): string {
   const lines = resumen.split('\n').map((line) => {
-    const l = line.trim()
-    if (!l) return '<br>'
-    if (l.startsWith('ALERTA:'))
+    const raw = line.trim()
+    if (!raw) return '<br>'
+    const l = escapeHtml(raw)
+    if (raw.startsWith('ALERTA:'))
       return `<p style="color:#ef4444;font-weight:bold;margin:4px 0;">${l}</p>`
-    if (l.startsWith('ESTADO ÓPTIMO:') || l.startsWith('ESTADO OPTIMO:'))
+    if (raw.startsWith('ESTADO ÓPTIMO:') || raw.startsWith('ESTADO OPTIMO:'))
       return `<p style="color:#22c55e;font-weight:bold;margin:4px 0;">${l}</p>`
-    if (l.startsWith('  ·') || l.startsWith('· '))
+    if (raw.startsWith('  ·') || raw.startsWith('· '))
       return `<p style="color:#aaa;margin:2px 0 2px 16px;">${l}</p>`
     return `<p style="color:#ddd;margin:3px 0;">${l}</p>`
   }).join('')
@@ -180,8 +162,8 @@ function buildEmailHTML(titulo: string, periodo: string, resumen: string): strin
         <h1 style="margin:0;font-size:28px;font-weight:900;font-style:italic;letter-spacing:-1px;">CRUCI-TRACK</h1>
         <p style="margin:4px 0 0;font-size:11px;opacity:.8;letter-spacing:2px;">SISTEMA DE AUDITORÍA DE TELEMETRÍA · CRUCIANELLI S.A.</p>
       </div>
-      <h2 style="color:#fff;font-size:20px;font-weight:900;margin-bottom:4px;">${titulo.toUpperCase()}</h2>
-      <p style="color:#666;font-size:12px;letter-spacing:1px;margin-bottom:28px;">${periodo}</p>
+      <h2 style="color:#fff;font-size:20px;font-weight:900;margin-bottom:4px;">${escapeHtml(titulo.toUpperCase())}</h2>
+      <p style="color:#666;font-size:12px;letter-spacing:1px;margin-bottom:28px;">${escapeHtml(periodo)}</p>
       <div style="background:#1a1a1a;border:1px solid #333;border-radius:8px;padding:24px;margin-bottom:24px;">
         <h3 style="color:#DC2626;font-size:11px;letter-spacing:2px;margin:0 0 16px;text-transform:uppercase;">Resumen Ejecutivo</h3>
         ${lines}

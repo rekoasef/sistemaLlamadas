@@ -15,7 +15,6 @@ import { calcularTopConcesionarios } from '@/lib/wallboard'
 import { exportarReportePDF, exportarReportePDFComoBase64 } from '@/lib/pdf'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { SkeletonReporteCard } from '@/components/ui/SkeletonCard'
-import { DESTINATARIOS_DEFAULT } from '@/lib/email-config'
 import type { Reporte, FranjaPerdidas } from '@/types/domain'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -261,7 +260,6 @@ const DocumentViewer = memo(function DocumentViewer({
           periodo,
           resumen: reporte.resumen_escrito ?? '',
           pdfBase64,
-          destinatarios: DESTINATARIOS_DEFAULT,
         }),
       })
       if (!res.ok) throw new Error('Error en el servidor')
