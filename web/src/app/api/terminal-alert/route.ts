@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { enviarAlertaTerminal } from '@/lib/email'
+import { emailConfigurado, enviarAlertaTerminal } from '@/lib/email'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { isWebhookAuthorized, serverError, unauthorized } from '@/lib/api-auth'
 
@@ -32,6 +32,12 @@ export async function POST(req: NextRequest) {
       (record.status_previo !== null && typeof record.status_previo !== 'string')
     ) {
       return NextResponse.json({ error: 'Payload inválido' }, { status: 400 })
+    }
+
+    // Hoy el sistema no manda mails: sin Gmail configurado, la alerta se omite.
+    // El cambio de estado igual queda en terminal_status_history.
+    if (!emailConfigurado()) {
+      return NextResponse.json({ ok: true, mail: 'omitido' })
     }
 
     // Service role: el webhook no tiene sesión, y dispositivo_alias no tiene por
